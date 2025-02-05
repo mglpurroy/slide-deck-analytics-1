@@ -7,7 +7,11 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 from typing import Dict, List, Any
-from datetime import datetime
+from datetime import datetime, timedelta
+import pycountry
+import certifi
+import urllib3
+import warnings
 
 class UCDP:
     """Class for handling UCDP conflict data"""
@@ -355,3 +359,193 @@ class GIC:
         gic_grouped['GIC_coup_failed'] = (gic_grouped['coup_status'] == 1).astype(int)
         
         return gic_grouped
+    
+class ACLEDDataFetcher:
+    """
+    A class to fetch and process ACLED (Armed Conflict Location & Event Data) 
+    """
+    
+    def __init__(self, api_key, email):
+        """
+        Initialize the ACLED data fetcher
+        """
+        self.api_key = api_key
+        self.email = email
+        self.base_url = "https://api.acleddata.com/acled/read/"
+        
+        # Selected fields matching the R script
+        self.fields = [
+            "event_id_cnty", "iso", "event_date", "event_type", "fatalities", 
+            "disorder_type", "sub_event_type", "actor1", "actor2", 
+            "assoc_actor_1", "assoc_actor_2", "latitude", "longitude"
+        ]
+        
+        # Suppress SSL warnings at instance level
+        warnings.simplefilter('ignore', urllib3.exceptions.InsecureRequestWarning)
+    
+    def fetch_data(self, start_date, end_date, max_retries=3):
+        """
+        Fetch data from ACLED API with improved error handling
+        """
+        # Remove fields parameter - let's get all fields by default
+        params = {
+            'key': self.api_key,
+            'email': self.email,
+            'event_date': f"{start_date.strftime('%Y-%m-%d')}|{end_date.strftime('%Y-%m-%d')}",
+            'event_date_where': 'BETWEEN',
+            'limit': 0
+        }
+        
+        session = requests.Session()
+        retry = requests.packages.urllib3.util.Retry(
+            total=max_retries,
+            backoff_factor=0.5,
+            status_forcelist=[500, 502, 503, 504]
+        )
+        adapter = requests.adapters.HTTPAdapter(max_retries=retry)
+        session.mount('https://', adapter)
+        
+        try:
+            response = session.get(
+                self.base_url, 
+                params=params, 
+                verify=False  # Explicitly disable SSL verification
+            )
+            response.raise_for_status()
+            
+            # Debug response
+            json_response = response.json()
+            if 'error' in json_response:
+                print(f"API Error: {json_response['error']}")
+                return pd.DataFrame()
+                
+            if 'data' not in json_response:
+                print(f"Unexpected API response format. Response keys: {list(json_response.keys())}")
+                print(f"Raw response: {response.text[:500]}...")
+                return pd.DataFrame()
+            
+            return pd.DataFrame(json_response['data'])
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching data: {str(e)}")
+            return pd.DataFrame()
+        except ValueError as e:
+            print(f"Error parsing JSON response: {str(e)}")
+            print(f"Raw response: {response.text[:500]}...")
+            return pd.DataFrame()
+        finally:
+            session.close()
+
+    def _is_gang_related(self, row):
+        """
+        Determine if an event is gang-related
+        
+        Parameters:
+        -----------
+        row : pd.Series
+            A single row of event data
+        
+        Returns:
+        --------
+        bool
+            True if the event is gang-related, False otherwise
+        """
+        gang_keywords = ["Unidentified Gang", "Unidentified Armed Group"]
+        
+        # Check all actor fields for gang-related keywords
+        actor_fields = ['actor1', 'actor2', 'assoc_actor_1', 'assoc_actor_2']
+        return any(
+            any(keyword in str(row[field]) for keyword in gang_keywords) 
+            for field in actor_fields
+        )
+                
+    def process_data(self, acled_data):
+        """
+        Process raw ACLED data
+        
+        Parameters:
+        -----------
+        acled_data : pd.DataFrame
+            Raw ACLED data
+        
+        Returns:
+        --------
+        pd.DataFrame
+            Processed ACLED data
+        """
+        # Convert data types
+        acled_data['iso'] = pd.to_numeric(acled_data['iso'], errors='coerce')
+        acled_data['fatalities'] = pd.to_numeric(acled_data['fatalities'], errors='coerce')
+        
+        # Convert event date
+        acled_data['event_date'] = pd.to_datetime(acled_data['event_date'])
+        
+        # Add year and month columns
+        acled_data['year'] = acled_data['event_date'].dt.year
+        acled_data['month'] = acled_data['event_date'].dt.month
+        
+        # Convert country code
+        def convert_country_code(iso):
+            try:
+                return pycountry.countries.get(numeric=str(iso)).alpha_3
+            except (AttributeError, ValueError):
+                return np.nan
+        
+        acled_data['iso3'] = acled_data['iso'].apply(convert_country_code)
+        
+        # Add gang-related flag
+        acled_data['gang'] = acled_data.apply(self._is_gang_related, axis=1)
+        
+        # Categorize event types and sub-types
+        for col in ['event_type', 'disorder_type', 'sub_event_type']:
+            acled_data[col] = acled_data[col].astype('category')
+        
+        return acled_data
+    
+    def get_conflict_related_deaths(self, acled_data):
+        """
+        Calculate conflict-related deaths
+        
+        Parameters:
+        -----------
+        acled_data : pd.DataFrame
+            Processed ACLED data
+        
+        Returns:
+        --------
+        pd.DataFrame
+            Monthly conflict-related deaths by country
+        """
+        # Filter for conflict-related events with fatalities, excluding gang events
+        conflict_deaths = acled_data[
+            (acled_data['event_type'].isin(['Battles', 'Violence against civilians', 'Explosions/Remote violence'])) &
+            (acled_data['fatalities'] > 0) &
+            (~acled_data['gang'])
+        ]
+        
+        # Aggregate deaths by country, year, and month
+        return conflict_deaths.groupby(['iso3', 'year', 'month'])['fatalities'].sum().reset_index(name='ACLED_conflict_related_deaths')
+    
+    def get_event_counts(self, acled_data):
+        """
+        Calculate event counts by type
+        
+        Parameters:
+        -----------
+        acled_data : pd.DataFrame
+            Processed ACLED data
+        
+        Returns:
+        --------
+        pd.DataFrame
+            Monthly event counts by country and type
+        """
+        # Exclude gang-related events
+        non_gang_data = acled_data[~acled_data['gang']]
+        
+        # Count events by type
+        event_counts = non_gang_data.groupby(['iso3', 'year', 'month', 'event_type']).size().unstack(fill_value=0)
+        event_counts.columns = [f'ACLED_{col.lower().replace(" ", "_")}' for col in event_counts.columns]
+        
+        # Reset index to make iso3, year, month regular columns
+        return event_counts.reset_index()
