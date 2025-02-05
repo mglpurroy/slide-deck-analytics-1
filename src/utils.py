@@ -6,12 +6,14 @@ import requests
 import pandas as pd
 import numpy as np
 from collections import defaultdict
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, Union
 from datetime import datetime, timedelta
 import pycountry
 import certifi
 import urllib3
 import warnings
+import time
+
 
 class UCDP:
     """Class for handling UCDP conflict data"""
@@ -549,3 +551,261 @@ class ACLEDDataFetcher:
         
         # Reset index to make iso3, year, month regular columns
         return event_counts.reset_index()
+
+
+class UNHCRDataFinder:
+    """
+    A class to fetch data from UNHCR's Refugee Data Finder API.
+    No API key required - the API is open to all.
+    """
+    
+    def __init__(self):
+        """Initialize the UNHCR Data Finder client"""
+        self.base_url = "https://api.unhcr.org/population/v1"
+        self.headers = {"Accept": "application/json"}
+        
+    def _make_request(self, endpoint: str, params: Dict = None) -> Dict:
+        """
+        Make a request to the UNHCR API with error handling
+        
+        Parameters:
+        -----------
+        endpoint : str
+            API endpoint to call
+        params : dict, optional
+            Query parameters
+            
+        Returns:
+        --------
+        dict
+            JSON response from the API
+        """
+        url = f"{self.base_url}/{endpoint}"
+        
+        try:
+            response = requests.get(url, headers=self.headers, params=params)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching data from {endpoint}: {str(e)}")
+            return None
+            
+    def _fetch_paginated_data(self, endpoint: str, params: Dict = None) -> List[Dict]:
+        """
+        Fetch all pages of data from a paginated endpoint
+        """
+        if params is None:
+            params = {}
+            
+        params['limit'] = params.get('limit', 1000)
+        params['page'] = 1
+        all_data = []
+        
+        while True:
+            response = self._make_request(endpoint, params)
+            if not response or 'items' not in response:
+                break
+                
+            all_data.extend(response['items'])
+            
+            if params['page'] >= response.get('totalPages', params['page']):
+                break
+                
+            params['page'] += 1
+            time.sleep(0.1)  # Small delay to be nice to the API
+            
+        return all_data
+
+    def get_metadata(self) -> Dict[str, pd.DataFrame]:
+        """
+        Fetch metadata (countries, regions, years)
+        
+        Returns:
+        --------
+        Dict[str, pd.DataFrame]
+            Dictionary containing metadata DataFrames
+        """
+        metadata = {}
+        
+        # Fetch countries
+        countries_data = self._make_request('countries')
+        if countries_data and 'items' in countries_data:
+            metadata['countries'] = pd.DataFrame(countries_data['items'])
+            
+        # Fetch regions
+        regions_data = self._make_request('regions')
+        if regions_data and 'items' in regions_data:
+            metadata['regions'] = pd.DataFrame(regions_data['items'])
+            
+        # Fetch years
+        years_data = self._make_request('years')
+        if years_data and 'items' in years_data:
+            metadata['years'] = pd.DataFrame(years_data['items'])
+            
+        return metadata
+
+    def get_population_data(self,
+                          year_from: Optional[int] = None,
+                          year_to: Optional[int] = None,
+                          years: Optional[List[int]] = None) -> pd.DataFrame:
+        """
+        Fetch population statistics including refugees, asylum-seekers, and others
+        needing international protection
+        """
+        params = {}
+        if year_from:
+            params['yearFrom'] = year_from
+        if year_to:
+            params['yearTo'] = year_to
+        if years:
+            params['year'] = ','.join(map(str, years))
+            
+        data = self._fetch_paginated_data('population', params)
+        return pd.DataFrame(data) if data else pd.DataFrame()
+
+    def get_unrwa_data(self,
+                      year_from: Optional[int] = None,
+                      year_to: Optional[int] = None,
+                      years: Optional[List[int]] = None) -> pd.DataFrame:
+        """
+        Fetch data on Palestine refugees under UNRWA's mandate
+        """
+        params = {}
+        if year_from:
+            params['yearFrom'] = year_from
+        if year_to:
+            params['yearTo'] = year_to
+        if years:
+            params['year'] = ','.join(map(str, years))
+            
+        data = self._fetch_paginated_data('unrwa', params)
+        return pd.DataFrame(data) if data else pd.DataFrame()
+
+    def get_idp_data(self,
+                    year_from: Optional[int] = None,
+                    year_to: Optional[int] = None,
+                    years: Optional[List[int]] = None) -> pd.DataFrame:
+        """
+        Fetch IDP data from IDMC
+        """
+        params = {}
+        if year_from:
+            params['yearFrom'] = year_from
+        if year_to:
+            params['yearTo'] = year_to
+        if years:
+            params['year'] = ','.join(map(str, years))
+            
+        data = self._fetch_paginated_data('idmc', params)
+        return pd.DataFrame(data) if data else pd.DataFrame()
+
+    def get_demographics(self,
+                        year: int,
+                        population_types: Optional[List[str]] = None) -> pd.DataFrame:
+        """
+        Fetch demographic data by age and sex
+        
+        Parameters:
+        -----------
+        year : int
+            Year for demographic data
+        population_types : List[str], optional
+            List of population types (e.g., ['refugees', 'oip'])
+        """
+        params = {'year': year}
+        if population_types:
+            params['columns[]'] = population_types
+            
+        data = self._fetch_paginated_data('demographics', params)
+        return pd.DataFrame(data) if data else pd.DataFrame()
+
+    def get_all_displacement_data(self,
+                                year_from: int,
+                                year_to: int) -> Dict[str, pd.DataFrame]:
+        """
+        Get comprehensive displacement statistics including:
+        - Refugees and others under UNHCR's mandate
+        - Palestine refugees under UNRWA's mandate
+        - IDPs (from IDMC)
+        
+        Parameters:
+        -----------
+        year_from : int
+            Start year
+        year_to : int
+            End year
+            
+        Returns:
+        --------
+        Dict[str, pd.DataFrame]
+            Dictionary containing DataFrames for each type of data
+        """
+        return {
+            'unhcr_population': self.get_population_data(year_from, year_to),
+            'unrwa_refugees': self.get_unrwa_data(year_from, year_to),
+            'idps': self.get_idp_data(year_from, year_to)
+        }
+        
+    def process_displacement_data(self,
+                                year_from: int,
+                                year_to: int) -> pd.DataFrame:
+        """
+        Process and combine displacement data into a format suitable for visualization,
+        with five categories:
+        1. Internally displaced people
+        2. Refugees under UNHCR's mandate
+        3. Palestine refugees under UNRWA's mandate
+        4. Asylum-seekers
+        5. Other people in need of international protection
+        
+        Parameters:
+        -----------
+        year_from : int
+            Start year
+        year_to : int
+            End year
+            
+        Returns:
+        --------
+        pd.DataFrame
+            Processed data with columns for each category by year
+        """
+        # Fetch raw data
+        raw_data = self.get_all_displacement_data(year_from, year_to)
+        
+        # Process UNHCR population data
+        unhcr_df = raw_data['unhcr_population']
+        population_data = unhcr_df[['year', 'refugees', 'asylum_seekers', 'oip']].fillna(0)
+        
+        # Process UNRWA data
+        unrwa_df = raw_data['unrwa_refugees']
+        unrwa_data = unrwa_df[['year', 'total']].rename(columns={'total': 'palestine_refugees'})
+        
+        # Process IDP data
+        idp_df = raw_data['idps']
+        idp_data = idp_df[['year', 'total']].rename(columns={'total': 'idps'})
+        
+        # Merge all datasets on year
+        merged_df = (population_data
+                    .merge(unrwa_data, on='year', how='outer')
+                    .merge(idp_data, on='year', how='outer')
+                    .fillna(0))
+        
+        # Ensure all years are present
+        all_years = range(year_from, year_to + 1)
+        merged_df = (merged_df.set_index('year')
+                    .reindex(all_years)
+                    .fillna(0)
+                    .reset_index())
+        
+        # Rename columns to match documentation
+        merged_df = merged_df.rename(columns={
+            'year': 'year',
+            'refugees': 'refugees_unhcr',
+            'asylum_seekers': 'asylum_seekers',
+            'oip': 'other_protection',
+            'palestine_refugees': 'refugees_unrwa',
+            'idps': 'idps'
+        })
+        
+        return merged_df.sort_values('year')
