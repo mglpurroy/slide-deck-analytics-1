@@ -18,18 +18,15 @@ import time
 class UCDP:
     """Class for handling UCDP conflict data"""
     
-    @staticmethod
-    def fetch_ucdp_data(pagesize: int = 1000) -> List[Dict[str, Any]]:
+    def __init__(self):
+        """Initialize UCDP class"""
+        self.base_url = "https://ucdpapi.pcr.uu.se/api"
+        
+    def fetch_ucdp_data(self, pagesize: int = 1000) -> List[Dict[str, Any]]:
         """
         Fetch conflict data from UCDP API.
-        
-        Args:
-            pagesize (int): Number of records to fetch per page
-            
-        Returns:
-            List[Dict]: List of conflict records
         """
-        base_url = "https://ucdpapi.pcr.uu.se/api/ucdpprioconflict/24.1"
+        url = f"{self.base_url}/ucdpprioconflict/24.1"
         params = {
             'pagesize': pagesize,
             'page': 1
@@ -38,17 +35,16 @@ class UCDP:
         all_data = []
         while True:
             try:
-                response = requests.get(base_url, params=params)
-                response.raise_for_status()  # Raise exception for bad status codes
+                response = requests.get(url, params=params)
+                response.raise_for_status()
                 data = response.json()
                 all_data.extend(data['Result'])
                 
-                # Check if there are more records to fetch
                 if len(data['Result']) < pagesize:
                     print(f"Retrieved all {len(all_data)} records")
                     break
                 else:
-                    print(f"{len(all_data)} records fetched so far, fetching next page...")
+                    print(f"{len(all_data)} records fetched so far...")
                     params['page'] += 1
                     
             except requests.exceptions.RequestException as e:
@@ -57,12 +53,156 @@ class UCDP:
                     print(f"Response status: {response.status_code}")
                     print(f"Response text: {response.text[:200]}")
                 break
-            
+                
         print(f"Total records fetched: {len(all_data)}")
         return all_data
-    
-    @staticmethod
-    def process_conflict_data(data: List[Dict[str, Any]]) -> pd.DataFrame:
+
+    def fetch_fatalities_data(self, 
+                            start_date: Optional[str] = None,
+                            end_date: Optional[str] = None,
+                            countries: Optional[List[int]] = None,
+                            pagesize: int = 1000) -> pd.DataFrame:
+        """
+        Fetch fatalities data from UCDP GED API
+        
+        Parameters:
+        -----------
+        start_date : str, optional
+            Start date in format 'YYYY-MM-DD'
+        end_date : str, optional
+            End date in format 'YYYY-MM-DD'
+        countries : List[int], optional
+            List of Gleditsch & Ward country codes
+        pagesize : int
+            Number of records per page (max 1000)
+            
+        Returns:
+        --------
+        pd.DataFrame
+            Processed fatalities data
+        """
+        url = f"{self.base_url}/gedevents/24.1"
+        params = {'pagesize': min(pagesize, 1000), 'page': 1}
+        
+        # Add optional filters
+        if start_date:
+            params['StartDate'] = start_date
+        if end_date:
+            params['EndDate'] = end_date
+        if countries:
+            params['Country'] = ','.join(map(str, countries))
+        
+        all_data = []
+        while True:
+            try:
+                response = requests.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                all_data.extend(data['Result'])
+                
+                if len(data['Result']) < pagesize:
+                    print(f"Retrieved all {len(all_data)} records")
+                    break
+                else:
+                    print(f"{len(all_data)} records fetched so far...")
+                    params['page'] += 1
+                    
+            except requests.exceptions.RequestException as e:
+                print(f"Error on page {params['page']}: {str(e)}")
+                if 'response' in locals():
+                    print(f"Response status: {response.status_code}")
+                    print(f"Response text: {response.text[:200]}")
+                break
+        
+        return self.process_fatalities_data(all_data)
+
+    def process_fatalities_data(self, data: List[Dict[str, Any]]) -> pd.DataFrame:
+        """
+        Process fatalities data from UCDP GED API
+        
+        Parameters:
+        -----------
+        data : List[Dict]
+            Raw data from UCDP GED API
+            
+        Returns:
+        --------
+        pd.DataFrame
+            Processed data with yearly fatalities by type
+        """
+        if not data:
+            print("No data to process")
+            return pd.DataFrame()
+        
+        # Create records with fatality counts
+        records = []
+        for record in data:
+            try:
+                year = int(record['year'])
+                deaths_a = int(record.get('deaths_a', 0) or 0)  # Government/Side A
+                deaths_b = int(record.get('deaths_b', 0) or 0)  # Rebels/Side B
+                deaths_civilians = int(record.get('deaths_civilians', 0) or 0)
+                deaths_unknown = int(record.get('deaths_unknown', 0) or 0)
+                type_of_violence = int(record.get('type_of_violence', 0) or 0)
+                
+                records.append({
+                    'year': year,
+                    'deaths_a': deaths_a,
+                    'deaths_b': deaths_b,
+                    'deaths_civilians': deaths_civilians,
+                    'deaths_unknown': deaths_unknown,
+                    'type_of_violence': type_of_violence,
+                    'total_deaths': deaths_a + deaths_b + deaths_civilians + deaths_unknown
+                })
+            except (KeyError, ValueError, TypeError) as e:
+                continue
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(records)
+        
+        # Create pivot table with deaths by year and violence type
+        df_pivot = pd.pivot_table(
+            df,
+            index='year',
+            columns='type_of_violence',
+            values=['deaths_a', 'deaths_b', 'deaths_civilians', 'deaths_unknown', 'total_deaths'],
+            aggfunc='sum',
+            fill_value=0
+        )
+        
+        # Flatten column names
+        df_pivot.columns = [f'{col[0]}_{col[1]}' for col in df_pivot.columns]
+        
+        # Rename violence types
+        violence_types = {
+            1: 'state_based',
+            2: 'non_state',
+            3: 'one_sided'
+        }
+        
+        renamed_cols = []
+        for col in df_pivot.columns:
+            for type_num, type_name in violence_types.items():
+                if str(type_num) in col:
+                    renamed_cols.append(col.replace(str(type_num), type_name))
+                    break
+            else:
+                renamed_cols.append(col)
+        
+        df_pivot.columns = renamed_cols
+        
+        # Add total fatalities column
+        df_pivot['total_fatalities'] = df_pivot[[col for col in df_pivot.columns 
+                                               if col.startswith('total_deaths')]].sum(axis=1)
+        
+        print(f"\nProcessed fatalities data summary:")
+        print(f"Years covered: {df_pivot.index.min()}-{df_pivot.index.max()}")
+        print(f"Total fatalities: {int(df_pivot['total_fatalities'].sum()):,}")
+        
+        return df_pivot.sort_index()
+
+    def process_conflict_data(self, data: List[Dict[str, Any]]) -> pd.DataFrame:
         """Process conflict data into yearly counts by type"""
         if not data:
             print("No data to process")
@@ -115,18 +255,8 @@ class UCDP:
         
         return df_pivot
 
-    @staticmethod
-    def calculate_average_duration(data: List[Dict[str, Any]]) -> pd.DataFrame:
-        """
-        Calculate the average duration of conflicts by start year, excluding active conflicts.
-        
-        Args:
-            data (List[Dict]): Raw conflict data from UCDP API
-            
-        Returns:
-            pd.DataFrame: DataFrame with average duration of conflicts by start year
-        """
-        # Create a DataFrame from all records
+    def calculate_average_duration(self, data: List[Dict[str, Any]]) -> pd.DataFrame:
+        """Calculate the average duration of conflicts by start year"""
         records = []
         for record in data:
             try:
@@ -138,31 +268,22 @@ class UCDP:
             except (KeyError, ValueError, TypeError) as e:
                 continue
         
-        # Convert records to DataFrame
         df_records = pd.DataFrame(records)
-        
-        # Convert dates to datetime
         df_records['start_date'] = pd.to_datetime(df_records['start_date'], errors='coerce')
         df_records['ep_end_date'] = pd.to_datetime(df_records['ep_end_date'], errors='coerce')
         
-        # Keep the maximum ep_end_date by conflict_id
         df_records = df_records.groupby('conflict_id').agg({
             'start_date': 'first',
             'ep_end_date': 'max'
         }).reset_index()
         
-        # Exclude active conflicts (where ep_end_date is NaT)
         df_records = df_records.dropna(subset=['ep_end_date'])
-        
-        # Calculate duration
         df_records['duration'] = (df_records['ep_end_date'] - df_records['start_date']).dt.days
         
-        # Calculate average duration by start year
         avg_duration = df_records.groupby(df_records['start_date'].dt.year)['duration'].mean()
         avg_duration.name = 'Average Duration'
         
         return avg_duration.reset_index().rename(columns={'start_date': 'Year'})
-
 
     @staticmethod
     def get_conflict_colors() -> Dict[str, str]:
@@ -174,6 +295,7 @@ class UCDP:
             'Internationalized-internal conflicts': '#9b59b6'
         }
     
+        
 class RegionMapper:
     """
     A class to map countries to their regions using various methods
