@@ -63,7 +63,7 @@ class UCDP:
                             countries: Optional[List[int]] = None,
                             pagesize: int = 1000) -> pd.DataFrame:
         """
-        Fetch fatalities data from UCDP GED API
+        Fetch fatalities data from UCDP GED API and GED Candidate
         
         Parameters:
         -----------
@@ -79,57 +79,95 @@ class UCDP:
         Returns:
         --------
         pd.DataFrame
-            Processed fatalities data
+            Processed fatalities data combining both GED and GED Candidate
         """
-        url = f"{self.base_url}/gedevents/24.1"
-        params = {'pagesize': min(pagesize, 1000), 'page': 1}
+        def fetch_from_endpoint(endpoint: str, params: dict) -> List[Dict]:
+            """Helper function to fetch data from a specific endpoint"""
+            url = f"{self.base_url}/{endpoint}"
+            params = params.copy()
+            params['page'] = 1
+            all_data = []
+            
+            while True:
+                try:
+                    response = requests.get(url, params=params)
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    all_data.extend(data['Result'])
+                    
+                    if len(data['Result']) < pagesize:
+                        print(f"Retrieved all {len(all_data)} records from {endpoint}")
+                        break
+                    else:
+                        print(f"{len(all_data)} records fetched from {endpoint} so far...")
+                        params['page'] += 1
+                        
+                except requests.exceptions.RequestException as e:
+                    print(f"Error on page {params['page']} from {endpoint}: {str(e)}")
+                    break
+                    
+            return all_data
         
-        # Add optional filters
+        # Prepare base parameters
+        params = {'pagesize': min(pagesize, 1000)}
         if start_date:
             params['StartDate'] = start_date
         if end_date:
             params['EndDate'] = end_date
         if countries:
             params['Country'] = ','.join(map(str, countries))
+            
+        # Fetch from regular GED dataset (24.1)
+        print("\nFetching from GED dataset 24.1...")
+        ged_data = fetch_from_endpoint('gedevents/24.1', params)
         
-        all_data = []
-        while True:
-            try:
-                response = requests.get(url, params=params)
-                response.raise_for_status()
-                data = response.json()
-                
-                all_data.extend(data['Result'])
-                
-                if len(data['Result']) < pagesize:
-                    print(f"Retrieved all {len(all_data)} records")
-                    break
-                else:
-                    print(f"{len(all_data)} records fetched so far...")
-                    params['page'] += 1
-                    
-            except requests.exceptions.RequestException as e:
-                print(f"Error on page {params['page']}: {str(e)}")
-                if 'response' in locals():
-                    print(f"Response status: {response.status_code}")
-                    print(f"Response text: {response.text[:200]}")
-                break
+        # Fetch from latest GED Candidate
+        print("\nFetching from GED Candidate 24.01.24.12...")
+        candidate_data = fetch_from_endpoint('gedevents/24.01.24.12', params)
         
-        return self.process_fatalities_data(all_data)
+        # Combine the data, prioritizing GED over GED Candidate for overlapping dates
+        if ged_data:
+            ged_df = pd.DataFrame(ged_data)
+            ged_df['source'] = 'ged'
+        else:
+            ged_df = pd.DataFrame()
+            
+        if candidate_data:
+            candidate_df = pd.DataFrame(candidate_data)
+            candidate_df['source'] = 'candidate'
+        else:
+            candidate_df = pd.DataFrame()
+            
+        # Combine datasets
+        if not ged_df.empty and not candidate_df.empty:
+            # Convert date columns to datetime
+            ged_df['date_start'] = pd.to_datetime(ged_df['date_start'])
+            candidate_df['date_start'] = pd.to_datetime(candidate_df['date_start'])
+            
+            # Find the latest date in GED dataset
+            latest_ged_date = ged_df['date_start'].max()
+            
+            # Only use candidate data after the latest GED date
+            candidate_df = candidate_df[candidate_df['date_start'] > latest_ged_date]
+            
+            # Combine the datasets
+            combined_data = pd.concat([ged_df, candidate_df], ignore_index=True)
+        else:
+            combined_data = ged_df if not ged_df.empty else candidate_df
+            
+        if combined_data.empty:
+            print("No data retrieved from either source")
+            return pd.DataFrame()
+            
+        print(f"\nTotal records after combining: {len(combined_data)}")
+        print(f"Date range: {combined_data['date_start'].min()} to {combined_data['date_start'].max()}")
+        
+        return self.process_fatalities_data(combined_data.to_dict('records'))
 
     def process_fatalities_data(self, data: List[Dict[str, Any]]) -> pd.DataFrame:
         """
         Process fatalities data from UCDP GED API
-        
-        Parameters:
-        -----------
-        data : List[Dict]
-            Raw data from UCDP GED API
-            
-        Returns:
-        --------
-        pd.DataFrame
-            Processed data with yearly fatalities by type
         """
         if not data:
             print("No data to process")
@@ -140,8 +178,8 @@ class UCDP:
         for record in data:
             try:
                 year = int(record['year'])
-                deaths_a = int(record.get('deaths_a', 0) or 0)  # Government/Side A
-                deaths_b = int(record.get('deaths_b', 0) or 0)  # Rebels/Side B
+                deaths_a = int(record.get('deaths_a', 0) or 0)
+                deaths_b = int(record.get('deaths_b', 0) or 0)
                 deaths_civilians = int(record.get('deaths_civilians', 0) or 0)
                 deaths_unknown = int(record.get('deaths_unknown', 0) or 0)
                 type_of_violence = int(record.get('type_of_violence', 0) or 0)
@@ -201,7 +239,7 @@ class UCDP:
         print(f"Total fatalities: {int(df_pivot['total_fatalities'].sum()):,}")
         
         return df_pivot.sort_index()
-
+    
     def process_conflict_data(self, data: List[Dict[str, Any]]) -> pd.DataFrame:
         """Process conflict data into yearly counts by type"""
         if not data:
@@ -294,8 +332,8 @@ class UCDP:
             'Internal conflicts': '#f1c40f',
             'Internationalized-internal conflicts': '#9b59b6'
         }
-    
-        
+
+
 class RegionMapper:
     """
     A class to map countries to their regions using various methods
