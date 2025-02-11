@@ -1,3 +1,6 @@
+![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
+![License](https://img.shields.io/github/license/your-username/your-repo)
+
 # Slide Deck Analytics
 
 This repository contains the Jupyter Notebook used to generate key figures and insights for the FCV (Fragility, Conflict, and Violence) slide deck. The notebook processes various datasets and produces visualizations related to conflict trends, armed conflict duration, coup attempts, forcibly displaced persons, organized crime, and development indicators.
@@ -31,19 +34,19 @@ The analysis uses multiple datasets, including:
 
 Clone the repository:
 
-```bash
+```sh
 git clone https://github.com/your-username/your-repo.git
 ```
 
 Install dependencies:
 
-```bash
+```sh
 pip install -r requirements.txt
 ```
 
 Run the notebook:
 
-```bash
+```sh
 jupyter notebook main.ipynb
 ```
 
