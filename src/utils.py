@@ -1,18 +1,27 @@
 """
 UCDP data processing utilities
 """
-
+import os
+import sys
+import re
 import requests
 import pandas as pd
 import numpy as np
 from collections import defaultdict
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional, Union, Tuple
 from datetime import datetime, timedelta
 import pycountry
 import certifi
 import urllib3
 import warnings
 import time
+import socket
+import glob
+from openpyxl import load_workbook
+import country_converter as coco
+import logging
+from urllib.parse import urljoin, urlparse, parse_qs, urlencode
+
 
 
 class UCDP:
@@ -969,3 +978,897 @@ class UNHCRDataFinder:
         })
         
         return merged_df.sort_values('year')
+
+
+class RefugeeAnalyzer(UNHCRDataFinder):
+    """
+    A class to analyze refugee and IDP flows between countries using UNHCR data.
+    """
+    
+    def get_refugee_flows(self, year: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Get refugee origin and host country statistics for a specific year."""
+        params = {
+            'year': year,
+            'limit': 1000,
+            'coo_all': 'true',  # String 'true' instead of boolean True
+            'coa_all': 'true'
+        }
+        
+        data = self._fetch_paginated_data('population', params)
+        if not data:
+            return pd.DataFrame(), pd.DataFrame()
+        
+        # Print sample data for debugging
+        sample_data = pd.DataFrame(data[:1])
+        print(f"\nSample data columns: {sample_data.columns.tolist()}")
+        
+        # Create DataFrame and convert numeric columns
+        df = pd.DataFrame(data)
+        numeric_columns = ['refugees', 'asylum_seekers', 'idps', 'returned_idps', 
+                         'stateless', 'ooc', 'oip']
+        for col in numeric_columns:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+        
+        # Process origin countries (exclude summary rows)
+        origin_stats = (df[
+            # Keep rows with valid origin country
+            (df['coo_iso'].notna()) & 
+            (df['coo_iso'] != '-') & 
+            # Exclude rows where both origin and asylum are the same
+            (df['coo_iso'] != df['coa_iso'])
+        ].groupby(['coo_iso', 'coo_name'], as_index=False)
+        .agg({
+            'refugees': 'sum',
+            'asylum_seekers': 'sum',
+            'idps': 'sum'
+        })
+        .rename(columns={
+            'coo_iso': 'iso3',
+            'coo_name': 'country',
+            'refugees': 'refugees_originated',
+            'asylum_seekers': 'asylum_seekers_originated',
+            'idps': 'idps'
+        }))
+        
+        # Process host countries (exclude summary rows)
+        host_stats = (df[
+            # Keep rows with valid asylum country
+            (df['coa_iso'].notna()) & 
+            (df['coa_iso'] != '-') & 
+            # Exclude rows where both origin and asylum are the same
+            (df['coo_iso'] != df['coa_iso'])
+        ].groupby(['coa_iso', 'coa_name'], as_index=False)
+        .agg({
+            'refugees': 'sum',
+            'asylum_seekers': 'sum'
+        })
+        .rename(columns={
+            'coa_iso': 'iso3',
+            'coa_name': 'country',
+            'refugees': 'refugees_hosted',
+            'asylum_seekers': 'asylum_seekers_hosted'
+        }))
+        
+        print(f"\nFound {len(origin_stats)} origin countries and {len(host_stats)} host countries")
+        
+        # Print top 5 origin and host countries for verification
+        print("\nTop 5 origin countries:")
+        print(origin_stats.nlargest(5, 'refugees_originated')[['country', 'refugees_originated']])
+        print("\nTop 5 host countries:")
+        print(host_stats.nlargest(5, 'refugees_hosted')[['country', 'refugees_hosted']])
+        
+        return origin_stats, host_stats
+    
+    def create_displacement_summary(self, year: int) -> pd.DataFrame:
+        """Create a comprehensive summary of displacement statistics by country."""
+        try:
+            # Get refugee and IDP statistics
+            origin_stats, host_stats = self.get_refugee_flows(year)
+            
+            # Merge statistics
+            summary = origin_stats.merge(host_stats, on=['iso3', 'country'], how='outer').fillna(0)
+            
+            # Add total displacement column
+            summary['total_displacement'] = (
+                summary['refugees_originated'] +
+                summary['asylum_seekers_originated'] +
+                summary['idps']
+            )
+            
+            # Sort by total displacement
+            summary = summary.sort_values('total_displacement', ascending=False)
+            
+            # Remove rows where iso3 is '-' or empty
+            summary = summary[summary['iso3'].str.len() == 3].reset_index(drop=True)
+            
+            return summary
+            
+        except Exception as e:
+            print(f"Error creating displacement summary for {year}: {str(e)}")
+            return pd.DataFrame()
+    
+    def get_summary_stats(self, df: pd.DataFrame) -> Dict:
+        """Get summary statistics from the displacement data."""
+        return {
+            'total_refugees': df['refugees_originated'].sum(),
+            'total_asylum_seekers': df['asylum_seekers_originated'].sum(),
+            'total_idps': df['idps'].sum(),
+            'total_displacement': df['total_displacement'].sum(),
+            'num_origin_countries': df[df['refugees_originated'] > 0]['iso3'].nunique(),
+            'num_host_countries': df[df['refugees_hosted'] > 0]['iso3'].nunique()
+        }
+    
+    def analyze_historical_trends(self, start_year: int = 2010, end_year: int = 2022) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Analyze historical trends in displacement statistics.
+        """
+        all_years_data = []
+        yearly_stats = []
+        
+        print(f"\nAnalyzing displacement trends from {start_year} to {end_year}...")
+        
+        for year in range(start_year, end_year + 1):
+            print(f"Processing year {year}...")
+            summary = self.create_displacement_summary(year)
+            
+            if not summary.empty:
+                # Get yearly statistics
+                stats = self.get_summary_stats(summary)
+                stats['year'] = year
+                yearly_stats.append(stats)
+                
+                # Add year to detailed data
+                summary['year'] = year
+                all_years_data.append(summary)
+        
+        # Combine yearly statistics
+        stats_df = pd.DataFrame(yearly_stats)
+        
+        # Combine all detailed data
+        detailed_df = pd.concat(all_years_data, ignore_index=True) if all_years_data else pd.DataFrame()
+        
+        return stats_df, detailed_df
+    
+    def get_trend_analysis(self, stats_df: pd.DataFrame) -> Dict:
+        """Calculate trends and changes in displacement statistics."""
+        # Calculate year-over-year changes
+        stats_df = stats_df.sort_values('year')
+        
+        for col in ['total_refugees', 'total_asylum_seekers', 'total_idps']:
+            stats_df[f'{col}_yoy_change'] = stats_df[col].pct_change() * 100
+        
+        # Calculate compound annual growth rate (CAGR)
+        years = stats_df['year'].max() - stats_df['year'].min()
+        trends = {}
+        
+        for col in ['total_refugees', 'total_asylum_seekers', 'total_idps']:
+            start_val = stats_df[col].iloc[0]
+            end_val = stats_df[col].iloc[-1]
+            if start_val > 0:
+                cagr = (((end_val / start_val) ** (1/years)) - 1) * 100
+            else:
+                cagr = np.nan
+            trends[f'{col}_cagr'] = cagr
+            
+            # Calculate total change
+            total_change = ((end_val - start_val) / start_val * 100) if start_val > 0 else np.nan
+            trends[f'{col}_total_change'] = total_change
+        
+        return trends
+    
+    def get_country_trends(self, detailed_df: pd.DataFrame) -> pd.DataFrame:
+        """Analyze trends for individual countries."""
+        # Get the most recent year's data
+        latest_year = detailed_df['year'].max()
+        earliest_year = detailed_df['year'].min()
+        
+        # Calculate country-level trends
+        country_trends = []
+        
+        for country in detailed_df['country'].unique():
+            country_data = detailed_df[detailed_df['country'] == country]
+            
+            latest = country_data[country_data['year'] == latest_year].iloc[0] if not country_data[country_data['year'] == latest_year].empty else None
+            earliest = country_data[country_data['year'] == earliest_year].iloc[0] if not country_data[country_data['year'] == earliest_year].empty else None
+            
+            if latest is not None and earliest is not None:
+                trend = {
+                    'country': country,
+                    'iso3': latest['iso3'],
+                    'refugees_change': ((latest['refugees_originated'] - earliest['refugees_originated']) / 
+                                    earliest['refugees_originated'] * 100) if earliest['refugees_originated'] > 0 else np.nan,
+                    'current_refugees': latest['refugees_originated'],
+                    'current_idps': latest['idps'],
+                    'hosting_change': ((latest['refugees_hosted'] - earliest['refugees_hosted']) /
+                                    earliest['refugees_hosted'] * 100) if earliest['refugees_hosted'] > 0 else np.nan,
+                    'current_hosting': latest['refugees_hosted']
+                }
+                country_trends.append(trend)
+        
+        return pd.DataFrame(country_trends)
+
+
+class WorldBankAPI:
+    """
+    A class to interact with the World Bank API and retrieve various indicators and data.
+    """
+    
+    def __init__(self):
+        self.base_url = "http://api.worldbank.org/v2"
+        self.format = "json"
+        self._all_countries = None  # Cache for country codes
+    
+    def get_country_list(self) -> pd.DataFrame:
+        """
+        Retrieve a list of all available countries and their codes.
+        
+        Returns:
+            pandas.DataFrame containing country information
+        """
+        url = f"{self.base_url}/country"
+        params = {'format': self.format, 'per_page': 300}
+        
+        response = requests.get(url, params=params)
+        
+        if response.status_code != 200:
+            raise Exception(f"API request failed with status code {response.status_code}")
+            
+        data = response.json()
+        return pd.DataFrame(data[1])
+    
+    def _get_all_country_codes(self) -> List[str]:
+        """
+        Get a list of all country codes.
+        
+        Returns:
+            List of country codes
+        """
+        if self._all_countries is None:
+            df = self.get_country_list()
+            # Filter out aggregates and regions, keep only countries
+            self._all_countries = df[df['region'].notna()]['id'].tolist()
+        return self._all_countries
+    
+    def get_indicator_data(
+        self,
+        country_code: Union[str, List[str], None] = None,
+        indicator: str = None,
+        start_year: Optional[int] = None,
+        end_year: Optional[int] = None
+    ) -> pd.DataFrame:
+        """
+        Retrieve data for a specific indicator and country/countries.
+        
+        Args:
+            country_code: ISO country code(s) (e.g., 'US' for United States) or None for all countries
+            indicator: World Bank indicator code (e.g., 'NY.GDP.MKTP.CD' for GDP)
+            start_year: Starting year for the data (optional)
+            end_year: Ending year for the data (optional)
+            
+        Returns:
+            pandas.DataFrame containing the requested data
+        """
+        # Handle the case where country_code is None (all countries)
+        if country_code is None:
+            country_code = 'all'
+            
+        # Handle multiple country codes
+        elif isinstance(country_code, list):
+            country_code = ';'.join(country_code)
+            
+        # Build the URL
+        url = f"{self.base_url}/country/{country_code}/indicator/{indicator}"
+        
+        # Parameters for the request
+        params = {
+            'format': self.format,
+            'per_page': 1000
+        }
+        
+        # Add date range if specified
+        if start_year:
+            params['date'] = f"{start_year}"
+            if end_year:
+                params['date'] = f"{start_year}:{end_year}"
+        
+        all_data = []
+        page = 1
+        while True:
+            params['page'] = page
+            response = requests.get(url, params=params)
+            
+            if response.status_code != 200:
+                raise Exception(f"API request failed with status code {response.status_code}")
+                
+            data = response.json()
+            
+            # Check if we have data
+            if len(data) < 2 or not data[1]:
+                break
+                
+            all_data.extend(data[1])
+            page += 1
+            
+            # Check if we've reached the last page
+            if len(data[1]) < params['per_page']:
+                break
+        
+        if not all_data:
+            return pd.DataFrame()
+            
+        # Convert to DataFrame and clean up nested structures
+        df = pd.DataFrame(all_data)
+        
+        # Extract values from nested dictionaries
+        df['country'] = df['country'].apply(lambda x: x['value'])
+        df['countryiso3code'] = df['countryiso3code'].astype(str)
+        
+        # Clean up the DataFrame
+        df['date'] = pd.to_datetime(df['date'], format='%Y')
+        df['value'] = pd.to_numeric(df['value'], errors='coerce')
+        
+        # Select and rename columns
+        df = df[['country', 'countryiso3code', 'date', 'value']].copy()
+        df = df.rename(columns={
+            'value': indicator,
+            'countryiso3code': 'iso3'
+        })
+        
+        return df
+
+    def search_indicators(self, query: str) -> pd.DataFrame:
+        """
+        Search for indicators based on a keyword query.
+        
+        Args:
+            query: Search term for indicators
+            
+        Returns:
+            pandas.DataFrame containing matching indicators
+        """
+        url = f"{self.base_url}/indicator"
+        params = {
+            'format': self.format,
+            'per_page': 1000,
+            'search': query
+        }
+        
+        response = requests.get(url, params=params)
+        
+        if response.status_code != 200:
+            raise Exception(f"API request failed with status code {response.status_code}")
+            
+        data = response.json()
+        return pd.DataFrame(data[1])
+
+
+
+class FSIDataProcessor:
+    """A class to process Fragile States Index (FSI) data and create monthly country-level datasets."""
+    
+    def __init__(self, source_dir: str, output_dir: str):
+        """Initialize the FSI data processor."""
+        self.source_dir = source_dir
+        self.output_dir = output_dir
+        self.cc = coco.CountryConverter()
+        
+        if not os.path.exists(self.source_dir):
+            raise ValueError(f"Source directory does not exist: {self.source_dir}")
+    
+    def _get_fsi_files(self) -> Dict[str, str]:
+        """Get all FSI files from the source directory."""
+        pattern = os.path.join(self.source_dir, "*.xlsx")
+        files = glob.glob(pattern)
+        
+        if not files:
+            raise ValueError(f"No Excel files found in {self.source_dir}")
+            
+        file_dict = {}
+        for f in files:
+            year = self._extract_year(f)
+            if year:
+                file_dict[year] = f
+                
+        if not file_dict:
+            raise ValueError("No valid FSI files with year in filename found")
+            
+        return file_dict
+    
+    def _extract_year(self, filepath: str) -> Optional[str]:
+        """Extract year from filename."""
+        import re
+        match = re.search(r'\d{4}', os.path.basename(filepath))
+        return match.group(0) if match else None
+    
+    def _read_excel_file(self, filepath: str) -> pd.DataFrame:
+        """Read FSI data from Excel file."""
+        try:
+            df = pd.read_excel(filepath, dtype=str)
+            return df[['Country', 'Total']].copy()
+        except Exception:
+            return pd.DataFrame()
+    
+    def _convert_country_to_iso3(self, country_names: pd.Series) -> pd.Series:
+        """Convert country names to ISO3 codes."""
+        iso3_codes = []
+        for name in country_names:
+            try:
+                # Special handling for Israel and West Bank
+                if name == 'Israel and West Bank':
+                    iso3_codes.append('ISR')
+                else:
+                    code = self.cc.convert(name, to='ISO3')
+                    iso3_codes.append(code)
+            except:
+                iso3_codes.append(None)
+        return pd.Series(iso3_codes)
+    
+    def _create_monthly_dataset(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Create monthly dataset from annual FSI data."""
+        if df.empty:
+            raise ValueError("No data available to create monthly dataset")
+            
+        monthly_data = []
+        for year in df['year'].unique():
+            year_data = df[df['year'] == year].copy()
+            for month in range(1, 13):
+                month_data = year_data.copy()
+                month_data['month'] = month
+                month_data['date'] = pd.to_datetime(
+                    month_data[['year', 'month']].assign(day=1)
+                )
+                monthly_data.append(month_data)
+        
+        return pd.concat(monthly_data, ignore_index=True)
+    
+    def process_fsi_data(self) -> pd.DataFrame:
+        """Process FSI data files and create monthly country-level dataset."""
+        fsi_files = self._get_fsi_files()
+        
+        dfs = []
+        for year, filepath in fsi_files.items():
+            df = self._read_excel_file(filepath)
+            if not df.empty:
+                df['year'] = int(year)
+                df['FSI'] = pd.to_numeric(df['Total'], errors='coerce')
+                df['iso3'] = self._convert_country_to_iso3(df['Country'])
+                df = df.dropna(subset=['iso3'])
+                df = df.drop(['Country', 'Total'], axis=1)
+                dfs.append(df)
+        
+        combined_df = pd.concat(dfs, ignore_index=True)
+        monthly_df = self._create_monthly_dataset(combined_df)
+        return monthly_df.sort_values(['iso3', 'date'])
+    
+    def save_to_csv(self, df: pd.DataFrame, filename: str = 'fsi_monthly.csv') -> bool:
+        """Save processed data to CSV file if output directory exists."""
+        if not os.path.exists(self.output_dir):
+            return False
+            
+        try:
+            output_path = os.path.join(self.output_dir, filename)
+            df.to_csv(output_path, index=False)
+            return True
+        except:
+            return False
+        
+
+
+class FragilityClassifier:
+    """
+    A class to process and manage country fragility classifications across years.
+    """
+    
+    def __init__(self, data_dir: str = "data"):
+        """Initialize the FragilityClassifier with the data directory path."""
+        self.data_dir = data_dir
+        self.classifications = {}
+        self._load_classifications()
+    
+    def _clean_rtf_content(self, content: str) -> str:
+        """Clean RTF file content by removing RTF formatting."""
+        # Remove RTF escape sequences
+        content = content.replace('\\\'', "'")
+        content = re.sub(r'\\[a-z]+', ' ', content)
+        # Remove other RTF formatting
+        content = content.replace('\\', '')
+        return content
+    
+    def _extract_iso_codes(self, content: str, pattern: str) -> List[str]:
+        """Extract ISO codes from the file content using the given pattern."""
+        try:
+            # Clean content first
+            content = self._clean_rtf_content(content)
+            # Look for the pattern in cleaned content
+            match = re.search(pattern + r'\s*<-\s*c\((.*?)\)', content, re.DOTALL)
+            if match:
+                # Extract codes and clean them
+                codes_str = match.group(1)
+                # Extract quoted ISO codes
+                codes = re.findall(r'"([A-Z]{3})"', codes_str)
+                return codes
+        except Exception as e:
+            print(f"Error extracting {pattern}: {str(e)}")
+        return []
+    
+    def _load_file(self, year: int) -> Optional[str]:
+        """Load the content of a classification file for a given year."""
+        filename = f"{year}_List.rtf"
+        filepath = os.path.join(self.data_dir, filename)
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+                print(f"Successfully loaded {filename}")
+                return content
+        except FileNotFoundError:
+            print(f"Warning: File not found for year {year}: {filepath}")
+        except Exception as e:
+            print(f"Error reading {filename}: {str(e)}")
+        return None
+    
+    def _load_classifications(self):
+        """Load all classification files and process them."""
+        print("Loading classifications...")
+        # Process files for years 2016-2022
+        for year in range(2016, 2023, 2):
+            print(f"\nProcessing year {year}")
+            content = self._load_file(year)
+            if content:
+                # Extract ISO codes for different categories
+                extreme = self._extract_iso_codes(content, f"fragile_{year}_iso_extreme")
+                not_extreme = self._extract_iso_codes(content, f"fragile_{year}_iso_notextreme")
+                all_fragile = self._extract_iso_codes(content, f"fragile_{year}_iso_all")
+                
+                print(f"Found {len(extreme)} extreme, {len(not_extreme)} not extreme, {len(all_fragile)} total fragile countries")
+                
+                self.classifications[year] = {
+                    'extreme': extreme,
+                    'not_extreme': not_extreme,
+                    'all': all_fragile
+                }
+    
+    def get_classification(self, year: int) -> Dict[str, List[str]]:
+        """
+        Get the classification for a specific year.
+        
+        Args:
+            year: The year to get classifications for
+            
+        Returns:
+            Dictionary with 'extreme', 'not_extreme', and 'all' country lists
+        """
+        if year not in self.classifications:
+            print(f"Warning: No classification data available for year {year}")
+            return {'extreme': [], 'not_extreme': [], 'all': []}
+        return self.classifications[year]
+    
+    def get_country_status(self, iso3: str, year: int) -> str:
+        """
+        Get the fragility status of a country for a specific year.
+        
+        Args:
+            iso3: The ISO3 country code
+            year: The year to check
+            
+        Returns:
+            'extreme', 'fragile', or 'not_fragile'
+        """
+        if year not in self.classifications:
+            return 'unknown'
+            
+        if iso3 in self.classifications[year]['extreme']:
+            return 'extreme'
+        elif iso3 in self.classifications[year]['not_extreme']:
+            return 'fragile'
+        return 'not_fragile'
+    
+    def get_all_countries(self) -> List[str]:
+        """Get a list of all countries that have ever been classified as fragile."""
+        all_countries = set()
+        for year_data in self.classifications.values():
+            all_countries.update(year_data['all'])
+        return sorted(list(all_countries))
+    
+    def create_classification_panel(self) -> pd.DataFrame:
+        """
+        Create a panel dataset of classifications for all countries and years.
+        
+        Returns:
+            DataFrame with columns: iso3, year, status
+        """
+        data = []
+        countries = self.get_all_countries()
+        
+        for year in sorted(self.classifications.keys()):
+            for iso3 in countries:
+                status = self.get_country_status(iso3, year)
+                data.append({
+                    'iso3': iso3,
+                    'year': year,
+                    'status': status
+                })
+        
+        df = pd.DataFrame(data)
+        # Convert status to categorical with specific order
+        df['status'] = pd.Categorical(df['status'], 
+                                    categories=['extreme', 'fragile', 'not_fragile', 'unknown'],
+                                    ordered=True)
+        return df
+    
+
+
+import requests
+import pandas as pd
+import time
+import socket
+import urllib3
+import os
+import sys
+import logging
+from urllib.parse import urljoin, urlparse, parse_qs, urlencode
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s: %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('un_population_api.log', mode='w')
+    ]
+)
+logger = logging.getLogger(__name__)
+
+class UNPopulationDataPortalAPI:
+    def __init__(self, base_url="https://population.un.org/dataportalapi/api/v1"):
+        """
+        Initialize the UN Population Data Portal API client
+        
+        :param base_url: Base URL for the API
+        """
+        self.base_url = base_url
+        
+        # Disable SSL warnings if needed
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
+        # Session for persistent connection
+        self.session = requests.Session()
+        
+        # Detailed logging of initialization
+        logger.info(f"Initialized UN Population Data Portal API with base URL: {base_url}")
+    
+    def _resolve_url(self, url):
+        """
+        Carefully resolve potentially problematic URLs
+        
+        :param url: URL to resolve
+        :return: Resolved URL
+        """
+        # Parse the original URL
+        parsed_url = urlparse(url)
+        
+        # If URL is to an internal address, reconstruct using base URL
+        if parsed_url.netloc in ['10.208.38.29', '127.0.0.1', 'localhost']:
+            # Extract query parameters
+            query_params = parse_qs(parsed_url.query)
+            
+            # Reconstruct URL using original base URL
+            resolved_url = urljoin(self.base_url, parsed_url.path)
+            
+            # Add back original query parameters
+            if query_params:
+                resolved_url += f"?{urlencode(query_params, doseq=True)}"
+            
+            logger.info(f"Resolved internal URL: {url} -> {resolved_url}")
+            return resolved_url
+        
+        # If URL seems to be an incorrect domain, rebuild with original base
+        if 'www.un.org' in parsed_url.netloc or 'un.org' in parsed_url.netloc:
+            # Extract the path and query from the problematic URL
+            path = parsed_url.path.replace('/development/desa/pd', '/dataportalapi')
+            query_params = parse_qs(parsed_url.query)
+            
+            # Reconstruct URL using base domain and corrected path
+            resolved_url = f"https://population.un.org{path}"
+            
+            # Add back original query parameters
+            if query_params:
+                resolved_url += f"?{urlencode(query_params, doseq=True)}"
+            
+            logger.info(f"Corrected domain URL: {url} -> {resolved_url}")
+            return resolved_url
+        
+        return url
+    
+    def _make_request(self, method, url, **kwargs):
+        """
+        Centralized request method with comprehensive error handling
+        
+        :param method: HTTP method (get, post, etc.)
+        :param url: Target URL
+        :param kwargs: Additional arguments for requests
+        :return: Response object
+        """
+        # Resolve any problematic URLs
+        url = self._resolve_url(url)
+        
+        # Default request parameters
+        default_kwargs = {
+            'timeout': 30,
+            'verify': False,  # Disable SSL verification for testing
+        }
+        
+        # Update with any user-provided kwargs
+        default_kwargs.update(kwargs)
+        
+        try:
+            # Make the request using the session
+            logger.info(f"Making {method.upper()} request to {url}")
+            response = getattr(self.session, method)(url, **default_kwargs)
+            
+            # Raise an exception for bad status codes
+            response.raise_for_status()
+            
+            return response
+        
+        except requests.exceptions.RequestException as e:
+            # Detailed logging of request errors
+            logger.error(f"Request failed: {e}")
+            logger.error(f"Request details - Method: {method.upper()}, URL: {url}")
+            
+            # Specific error handling
+            if isinstance(e, requests.exceptions.ConnectionError):
+                logger.error("Connection Error: Unable to connect to the server")
+            elif isinstance(e, requests.exceptions.Timeout):
+                logger.error("Timeout Error: The request timed out")
+            elif isinstance(e, requests.exceptions.HTTPError):
+                logger.error(f"HTTP Error: {e.response.status_code} - {e.response.reason}")
+            
+            raise
+    
+    def test_api_connection(self):
+        """
+        Test basic API connectivity with detailed diagnostics
+        
+        :return: Boolean indicating connection success
+        """
+        try:
+            logger.info("Testing API Connection...")
+            
+            # Test endpoint
+            response = self._make_request('get', f"{self.base_url}/indicators")
+            
+            logger.info(f"API Connection Successful. Response Status: {response.status_code}")
+            return True
+        
+        except Exception as e:
+            logger.error(f"API Connection Failed: {e}")
+            return False
+    
+    def get_country_ids(self, max_retries=3, page_size=500):
+        """
+        Retrieve IDs for all countries with robust error handling
+        
+        :param max_retries: Maximum number of retry attempts
+        :param page_size: Number of results per page
+        :return: List of country IDs
+        """
+        country_ids = []
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Attempting to retrieve country IDs (Attempt {attempt + 1})...")
+                
+                # Initial request with custom page size
+                response = self._make_request(
+                    'get', 
+                    f"{self.base_url}/locations",
+                    params={'pageSize': page_size}
+                )
+                
+                # Parse response
+                data = response.json()
+                
+                # Collect country IDs (locationTypeId 4 represents countries)
+                batch_country_ids = [
+                    location['id'] for location in data['data'] 
+                    if location.get('locationTypeId') == 4
+                ]
+                country_ids.extend(batch_country_ids)
+                
+                # Handle pagination
+                current_page = 1
+                while data.get('nextPage'):
+                    try:
+                        current_page += 1
+                        logger.info(f"Fetching page {current_page}")
+                        
+                        # Resolve and use nextPage URL
+                        next_url = self._resolve_url(data['nextPage'])
+                        response = self._make_request('get', next_url)
+                        
+                        data = response.json()
+                        
+                        batch_country_ids = [
+                            location['id'] for location in data['data'] 
+                            if location.get('locationTypeId') == 4
+                        ]
+                        country_ids.extend(batch_country_ids)
+                    
+                    except Exception as page_error:
+                        logger.error(f"Error fetching page {current_page}: {page_error}")
+                        break
+                
+                logger.info(f"Successfully retrieved {len(country_ids)} country IDs")
+                return country_ids
+            
+            except Exception as e:
+                logger.error(f"Attempt {attempt + 1} failed: {e}")
+                
+                # Wait before retrying with exponential backoff
+                time.sleep(2 ** attempt)
+        
+        raise Exception("Failed to retrieve country IDs after multiple attempts")
+    
+    def get_population_data(self, start_year=1950, end_year=2050, indicator_id=36):
+        """
+        Retrieve population estimation data for countries
+        
+        :param start_year: Start year for data retrieval
+        :param end_year: End year for data retrieval
+        :param indicator_id: Indicator ID for population (default 36 for total population)
+        :return: DataFrame of population data
+        """
+        # Get country IDs
+        country_ids = self.get_country_ids()
+        
+        # Prepare to collect data
+        all_population_data = []
+        
+        # Batch processing
+        batch_size = 5
+        for i in range(0, len(country_ids), batch_size):
+            batch_ids = country_ids[i:i+batch_size]
+            location_ids = ','.join(map(str, batch_ids))
+            
+            try:
+                # Construct API target URL
+                target = (f"{self.base_url}/data/indicators/{indicator_id}/"
+                          f"locations/{location_ids}/"
+                          f"start/{start_year}/end/{end_year}")
+                
+                logger.info(f"Processing batch {i//batch_size + 1}")
+                
+                # Make request
+                response = self._make_request('get', target)
+                
+                # Parse response
+                data = response.json()
+                
+                # Collect data
+                all_population_data.extend(data['data'])
+                
+                # Handle pagination
+                while data.get('nextPage'):
+                    try:
+                        # Resolve and use nextPage URL
+                        next_url = self._resolve_url(data['nextPage'])
+                        response = self._make_request('get', next_url)
+                        
+                        data = response.json()
+                        all_population_data.extend(data['data'])
+                    except Exception as page_error:
+                        logger.error(f"Error fetching additional pages: {page_error}")
+                        break
+                
+                # Short pause between batches
+                time.sleep(0.5)
+            
+            except Exception as e:
+                logger.error(f"Error processing batch {i//batch_size + 1}: {e}")
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(all_population_data)
+        
+        return df
+    
