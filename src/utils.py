@@ -31,41 +31,94 @@ class UCDP:
         """Initialize UCDP class"""
         self.base_url = "https://ucdpapi.pcr.uu.se/api"
         
-    def fetch_ucdp_data(self, pagesize: int = 1000) -> List[Dict[str, Any]]:
+    def fetch_ucdp_data(self, pagesize: int = 50) -> List[Dict[str, Any]]:
         """
-        Fetch conflict data from UCDP API.
+        Fetch conflict data from UCDP API with pagination
+        
+        :param pagesize: Number of records to fetch per page
+        :return: List of all unique conflict records
         """
         url = f"{self.base_url}/ucdpprioconflict/24.1"
-        params = {
-            'pagesize': pagesize,
-            'page': 1
-        }
         
         all_data = []
+        seen_conflicts = set()
+        conflict_years = set()
+        current_page = 1
+        
         while True:
             try:
+                params = {
+                    'pagesize': pagesize,
+                    'page': current_page,
+                    'ordering': 'conflict_id,year'
+                }
+                
+                print(f"\nFetching page {current_page}...")
                 response = requests.get(url, params=params)
                 response.raise_for_status()
-                data = response.json()
-                all_data.extend(data['Result'])
                 
-                if len(data['Result']) < pagesize:
-                    print(f"Retrieved all {len(all_data)} records")
+                data = response.json()
+                
+                # Get total count on first page
+                if current_page == 1:
+                    total_count = data.get('TotalCount', 0)
+                    total_pages = data.get('TotalPages', 0)
+                    print(f"Total records available: {total_count}")
+                    print(f"Total pages: {total_pages}")
+                
+                # Get results for this page
+                current_results = data.get('Result', [])
+                
+                # Break if no results
+                if not current_results:
+                    print(f"No results on page {current_page}")
                     break
-                else:
-                    print(f"{len(all_data)} records fetched so far...")
-                    params['page'] += 1
+                
+                # Process records for this page
+                new_conflicts = 0
+                for record in current_results:
+                    conflict_id = record.get('conflict_id')
+                    year = record.get('year')
+                    conflict_year_key = (conflict_id, year)
                     
+                    if conflict_id not in seen_conflicts:
+                        new_conflicts += 1
+                        seen_conflicts.add(conflict_id)
+                    
+                    if conflict_year_key not in conflict_years:
+                        conflict_years.add(conflict_year_key)
+                        all_data.append(record)
+                
+                print(f"Page {current_page} summary:")
+                print(f"- Records in this page: {len(current_results)}")
+                print(f"- New unique conflicts: {new_conflicts}")
+                print(f"- Total unique conflicts so far: {len(seen_conflicts)}")
+                print(f"- Total unique conflict-years so far: {len(conflict_years)}")
+                print(f"- Total valid records so far: {len(all_data)}")
+                
+                # Move to next page
+                current_page += 1
+                
+                # Optional: break if we've reached total pages (if you want to limit)
+                if current_page > total_pages:
+                    break
+                
             except requests.exceptions.RequestException as e:
-                print(f"Error on page {params['page']}: {str(e)}")
+                print(f"Error on page {current_page}: {str(e)}")
                 if 'response' in locals():
                     print(f"Response status: {response.status_code}")
                     print(f"Response text: {response.text[:200]}")
                 break
-                
+        
+        # Final summary
+        print(f"\nFinal Summary:")
+        print(f"Total pages fetched: {current_page - 1}")
         print(f"Total records fetched: {len(all_data)}")
+        print(f"Total unique conflicts: {len(seen_conflicts)}")
+        print(f"Total unique conflict-years: {len(conflict_years)}")
+        
         return all_data
-
+        
     def fetch_fatalities_data(self, 
                             start_date: Optional[str] = None,
                             end_date: Optional[str] = None,
@@ -250,98 +303,137 @@ class UCDP:
         return df_pivot.sort_index()
     
     def process_conflict_data(self, data: List[Dict[str, Any]]) -> pd.DataFrame:
-        """Process conflict data into yearly counts by type"""
+        """
+        Process conflict data into yearly counts by unique conflicts
+        
+        Parameters:
+        -----------
+        data : List[Dict[str, Any]]
+            Raw conflict data from UCDP API
+            
+        Returns:
+        --------
+        pd.DataFrame
+            Yearly conflict counts by type
+        """
         if not data:
             print("No data to process")
             return pd.DataFrame()
         
         # Create a DataFrame from all records
-        records = []
-        for record in data:
-            try:
-                records.append({
-                    'year': int(record['year']),
-                    'type_of_conflict': int(record['type_of_conflict'])
-                })
-            except (KeyError, ValueError, TypeError) as e:
-                continue
+        df = pd.DataFrame(data)
         
-        # Convert records to DataFrame
-        df_records = pd.DataFrame(records)
+        # Convert type of conflict to numeric, handling potential errors
+        df['type_of_conflict'] = pd.to_numeric(df['type_of_conflict'], errors='coerce')
         
-        # Group by year and conflict type to get counts
-        df_pivot = pd.pivot_table(
-            df_records,
-            index='year',
-            columns='type_of_conflict',
-            aggfunc='size',
-            fill_value=0
+        # Group by year and conflict type, count unique conflicts
+        yearly_conflict_counts = (
+            df.groupby(['year', 'type_of_conflict'])['conflict_id']
+            .nunique()
+            .reset_index(name='unique_conflict_count')
         )
+        yearly_conflict_counts.sort_values(by=['year', 'type_of_conflict'], inplace=True)
         
-        # Ensure all conflict types are present
-        for i in range(1, 5):
-            if i not in df_pivot.columns:
-                df_pivot[i] = 0
+        # Map numeric conflict types to descriptive labels
+        conflict_type_labels = {
+            1: "Extrasystemic",
+            2: "Interstate",
+            3: "Intrastate",
+            4: "Internationalized intrastate"
+        }
+        yearly_conflict_counts['conflict_type_label'] = yearly_conflict_counts['type_of_conflict'].map(conflict_type_labels)
         
-        # Sort columns and rename
-        df_pivot = df_pivot[[1, 2, 3, 4]]
-        df_pivot = df_pivot.rename(columns={
-            1: 'Extra-systemic conflicts',
-            2: 'Inter-state conflicts',
-            3: 'Internal conflicts',
-            4: 'Internationalized-internal conflicts'
-        })
+        # Create pivot table
+        pivot_df = yearly_conflict_counts.pivot_table(
+            index='year', 
+            columns='conflict_type_label', 
+            values='unique_conflict_count',
+            aggfunc='sum'
+        ).fillna(0)
         
-        # Sort by year
-        df_pivot = df_pivot.sort_index()
+        # Ensure float type
+        pivot_df = pivot_df.astype(float)
+        pivot_df.sort_index(inplace=True)
         
+        # Reorder columns to a specific sequence
+        desired_order = ["Extrasystemic", "Interstate", "Internationalized intrastate", "Intrastate"]
+        pivot_df = pivot_df.reindex(columns=desired_order)
+        
+        # Ensure index is numeric
+        pivot_df.index = pivot_df.index.astype(int)
+        
+        # Print summary
         print(f"\nProcessed data summary:")
-        print(f"Years covered: {df_pivot.index.min()}-{df_pivot.index.max()}")
-        print(f"Number of years: {len(df_pivot)}")
-        print(f"Total conflicts: {df_pivot.sum().sum()}")
+        print(f"Years covered: {pivot_df.index.min()}-{pivot_df.index.max()}")
+        print(f"Number of years: {len(pivot_df)}")
+        print(f"Total unique conflicts: {pivot_df.sum().sum()}")
         
-        return df_pivot
-
-    def calculate_average_duration(self, data: List[Dict[str, Any]]) -> pd.DataFrame:
-        """Calculate the average duration of conflicts by start year"""
+        return pivot_df
+    
+    def calculate_active_duration(self, data: List[Dict[str, Any]]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Calculate the average duration of active conflicts for each year and decade
+        
+        Parameters:
+        -----------
+        data : List[Dict[str, Any]]
+            Raw conflict data from UCDP API
+            
+        Returns:
+        --------
+        Tuple[pd.DataFrame, pd.DataFrame]
+            yearly_avg: DataFrame with yearly average durations
+            decade_avg: DataFrame with decade averages
+        """
         records = []
         for record in data:
             try:
-                records.append({
-                    'conflict_id': record.get('conflict_id'),
-                    'start_date': record.get('start_date'),
-                    'ep_end_date': record.get('ep_end_date')
-                })
+                start_date = pd.to_datetime(record.get('start_date'))
+                end_date = pd.to_datetime(record.get('ep_end_date'))
+                conflict_id = record.get('conflict_id')
+                
+                if pd.isna(end_date):  # If conflict is ongoing
+                    end_date = pd.Timestamp.now()
+                
+                # Create records for each year the conflict was active
+                for year in range(start_date.year, end_date.year + 1):
+                    duration_until_year = (pd.Timestamp(f"{year}-12-31") - start_date).days
+                    records.append({
+                        'year': year,
+                        'conflict_id': conflict_id,
+                        'duration': duration_until_year
+                    })
+                    
             except (KeyError, ValueError, TypeError) as e:
                 continue
         
-        df_records = pd.DataFrame(records)
-        df_records['start_date'] = pd.to_datetime(df_records['start_date'], errors='coerce')
-        df_records['ep_end_date'] = pd.to_datetime(df_records['ep_end_date'], errors='coerce')
+        # Convert to DataFrame and calculate average duration for each year
+        df = pd.DataFrame(records)
+        yearly_avg = df.groupby('year').agg({
+            'duration': 'mean',
+            'conflict_id': 'count'
+        }).reset_index()
+        yearly_avg.columns = ['year', 'avg_duration', 'conflict_count']
         
-        df_records = df_records.groupby('conflict_id').agg({
-            'start_date': 'first',
-            'ep_end_date': 'max'
+        # Calculate decade averages
+        yearly_avg['decade'] = (yearly_avg['year'] // 10) * 10
+        decade_avg = yearly_avg.groupby('decade').agg({
+            'avg_duration': 'mean',
+            'conflict_count': 'mean'
         }).reset_index()
         
-        df_records = df_records.dropna(subset=['ep_end_date'])
-        df_records['duration'] = (df_records['ep_end_date'] - df_records['start_date']).dt.days
-        
-        avg_duration = df_records.groupby(df_records['start_date'].dt.year)['duration'].mean()
-        avg_duration.name = 'Average Duration'
-        
-        return avg_duration.reset_index().rename(columns={'start_date': 'Year'})
+        return yearly_avg, decade_avg
+    
 
     @staticmethod
     def get_conflict_colors() -> Dict[str, str]:
         """Get color mapping for conflict types"""
         return {
-            'Extra-systemic conflicts': '#2ecc71',
-            'Inter-state conflicts': '#3498db',
-            'Internal conflicts': '#f1c40f',
-            'Internationalized-internal conflicts': '#9b59b6'
+            'Extrasystemic': '#2ecc71',
+            'Interstate': '#3498db',
+            'Intrastate': '#f1c40f',
+            'Internationalized intrastate': '#9b59b6'
         }
-
 
 class RegionMapper:
     """
