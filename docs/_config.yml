@@ -23,3 +23,7 @@ sphinx:
     - sphinx_copybutton  # Enables copy button
     - sphinx_design  # Improves figure rendering
     - sphinx_thebe  # Enables live notebook execution
+
+launch_buttons:
+  binderhub_url: "https://mybinder.org"
+  thebe: false  # Disable Thebe since it's not working
