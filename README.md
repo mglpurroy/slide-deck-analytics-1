@@ -9,7 +9,7 @@ This repository contains the Jupyter Notebook used to generate key figures and i
 
 This section contains the main analysis notebooks:
 
-- [Main Analysis Notebook](../notebooks/main.ipynb)
+- [Main Analysis Notebook](notebooks/main.ipynb)
 
 ## Data Sources
 
