@@ -6,12 +6,15 @@
 
 This repository contains the Jupyter Notebook used to generate key figures and insights for the FCV (Fragility, Conflict, and Violence) slide deck. The notebook processes various datasets and produces visualizations related to conflict trends, armed conflict duration, coup attempts, forcibly displaced persons, organized crime, and development indicators.
 
+<<<<<<< HEAD
 
 # Content
 
 ```{tableofcontents}
 ```
 
+=======
+>>>>>>> 8ce7d6e838a6f5fae5a102145ec2f26554a92619
 # Data Sources
 
 The analysis uses multiple datasets, including:
@@ -37,3 +40,8 @@ The analysis uses multiple datasets, including:
 - **Visualization**: Uses Python libraries (e.g., Matplotlib, Seaborn) to create figures.
 - **Aggregation**: Data is grouped by key dimensions (e.g., region, income group, conflict type) to provide meaningful comparisons.
 
+<<<<<<< HEAD
+=======
+```{tableofcontents}
+```
+>>>>>>> 8ce7d6e838a6f5fae5a102145ec2f26554a92619
