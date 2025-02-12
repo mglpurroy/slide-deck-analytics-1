@@ -1,5 +1,9 @@
 format: jb-book
 root: README
 
-chapters:
-  - file: notebooks/main.ipynb
+parts:
+
+  - caption: Examples
+    numbered: True
+    chapters:
+      - file: notebooks/main.ipynb
