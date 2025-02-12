@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Project Documentation &#8212; My Jupyter Book</title>
+    <title>Slide Deck Analytics &#8212; My Jupyter Book</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=a3416100" />
     <link rel="stylesheet" type="text/css" href="_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css?v=be8a1c11" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-thebe.css?v=4fa983c6" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
   
@@ -158,7 +158,7 @@
         <ul class="nav bd-sidenav bd-sidenav__home-link">
             <li class="toctree-l1">
                 <a class="reference internal" href="index.html">
-                    Welcome to My Jupyter Book
+                    Welcome to the FCV Slide Analytics Deck
                 </a>
             </li>
         </ul>
@@ -379,7 +379,7 @@
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Project Documentation</h1>
+    <h1>Slide Deck Analytics</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -390,6 +390,11 @@
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#notebooks">Notebooks</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-sources">Data Sources</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#figures-generated">Figures Generated</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#methodology">Methodology</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-to-use">How to Use</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contact">Contact</a></li>
 </ul>
             </nav>
         </div>
@@ -401,15 +406,67 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section class="tex2jax_ignore mathjax_ignore" id="project-documentation">
-<h1>Project Documentation<a class="headerlink" href="#project-documentation" title="Link to this heading">#</a></h1>
-<p>Welcome to the project documentation!</p>
+  <p><img alt="Python Version" src="https://img.shields.io/badge/python-3.8%2B-blue" />
+<img alt="License" src="https://img.shields.io/github/license/your-username/your-repo" /></p>
+<section class="tex2jax_ignore mathjax_ignore" id="slide-deck-analytics">
+<h1>Slide Deck Analytics<a class="headerlink" href="#slide-deck-analytics" title="Link to this heading">#</a></h1>
+<p>This repository contains the Jupyter Notebook used to generate key figures and insights for the FCV (Fragility, Conflict, and Violence) slide deck. The notebook processes various datasets and produces visualizations related to conflict trends, armed conflict duration, coup attempts, forcibly displaced persons, organized crime, and development indicators.</p>
 <section id="notebooks">
 <h2>Notebooks<a class="headerlink" href="#notebooks" title="Link to this heading">#</a></h2>
 <p>This section contains the main analysis notebooks:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="#../notebooks/main.ipynb"><span class="xref myst">Main Analysis Notebook</span></a></p></li>
+<li><p><a class="reference internal" href="notebooks/main.html"><span class="std std-doc">Main Analysis Notebook</span></a></p></li>
+<li><p>COMING SOON!</p></li>
 </ul>
+</section>
+<section id="data-sources">
+<h2>Data Sources<a class="headerlink" href="#data-sources" title="Link to this heading">#</a></h2>
+<p>The analysis uses multiple datasets, including:</p>
+<ul class="simple">
+<li><p><strong>ACLED (Armed Conflict Location &amp; Event Data Project)</strong>: Provides real-time data on political violence and protests.</p></li>
+<li><p><strong>UCDP (Uppsala Conflict Data Program)</strong>: Offers detailed conflict data, including battle-related deaths.</p></li>
+<li><p><strong>World Bank Development Indicators</strong>: Covers socioeconomic data such as population projections, education, and sanitation.</p></li>
+<li><p><strong>UNHCR (United Nations High Commissioner for Refugees)</strong>: Data on forcibly displaced persons.</p></li>
+</ul>
+</section>
+<section id="figures-generated">
+<h2>Figures Generated<a class="headerlink" href="#figures-generated" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Number of Armed Conflicts by Type</strong>: Tracks different conflict types over time (extra-systemic, inter-state, internal, and internationalized internal conflicts).</p></li>
+<li><p><strong>Average Duration of Armed Conflicts (1965-2023)</strong>: Shows the changing trends in conflict longevity.</p></li>
+<li><p><strong>Global Coup Attempts</strong>: Maps coup occurrences and trends.</p></li>
+<li><p><strong>Conflict-Induced Fatalities</strong>: Visualizes fatalities by region (ACLED) and by type of conflict (UCDP).</p></li>
+<li><p><strong>Forcibly Displaced Persons</strong>: Highlights migration patterns due to conflicts.</p></li>
+<li><p><strong>Global Organized Crime</strong>: Provides insights into the spread and severity of organized crime.</p></li>
+<li><p><strong>Development Indicators</strong>: Includes population projections, education completion rates, and sanitation trends.</p></li>
+</ul>
+</section>
+<section id="methodology">
+<h2>Methodology<a class="headerlink" href="#methodology" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Data Preprocessing</strong>: Raw data is cleaned, filtered, and structured for visualization.</p></li>
+<li><p><strong>Visualization</strong>: Uses Python libraries (e.g., Matplotlib, Seaborn) to create figures.</p></li>
+<li><p><strong>Aggregation</strong>: Data is grouped by key dimensions (e.g., region, income group, conflict type) to provide meaningful comparisons.</p></li>
+</ul>
+</section>
+<section id="how-to-use">
+<h2>How to Use<a class="headerlink" href="#how-to-use" title="Link to this heading">#</a></h2>
+<p>Clone the repository:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/your-username/your-repo.git
+</pre></div>
+</div>
+<p>Install dependencies:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+</pre></div>
+</div>
+<p>Run the notebook:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>jupyter<span class="w"> </span>notebook<span class="w"> </span>main.ipynb
+</pre></div>
+</div>
+</section>
+<section id="contact">
+<h2>Contact<a class="headerlink" href="#contact" title="Link to this heading">#</a></h2>
+<p>For any questions or contributions, feel free to open an issue or submit a pull request.</p>
 </section>
 </section>
 
@@ -461,6 +518,11 @@
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#notebooks">Notebooks</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-sources">Data Sources</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#figures-generated">Figures Generated</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#methodology">Methodology</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-to-use">How to Use</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contact">Contact</a></li>
 </ul>
   </nav></div>
 
