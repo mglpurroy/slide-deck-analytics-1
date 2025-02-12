@@ -1,5 +1,5 @@
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
-![License](https://img.shields.io/github/license/your-username/your-repo)
+![License](https://img.shields.io/github/license/mglpurroy/slide-deck-analytics-1)
 
 # Slide Deck Analytics
 
