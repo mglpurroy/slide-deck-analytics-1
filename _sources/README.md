@@ -1,5 +1,7 @@
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
 ![License](https://img.shields.io/github/license/mglpurroy/slide-deck-analytics-1)
+[![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/mglpurroy/slide-deck-analytics-1/main?filepath=notebooks/main.ipynb)
+
 
 # Slide Deck Analytics
 
