@@ -5,6 +5,12 @@
 
 This repository contains the Jupyter Notebook used to generate key figures and insights for the FCV (Fragility, Conflict, and Violence) slide deck. The notebook processes various datasets and produces visualizations related to conflict trends, armed conflict duration, coup attempts, forcibly displaced persons, organized crime, and development indicators.
 
+## Notebooks
+
+This section contains the main analysis notebooks:
+
+- [Main Analysis Notebook](../notebooks/main.ipynb)
+
 ## Data Sources
 
 The analysis uses multiple datasets, including:
