@@ -21,7 +21,8 @@ from openpyxl import load_workbook
 import country_converter as coco
 import logging
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode
-
+import json
+from json.decoder import JSONDecodeError
 
 
 class UCDP:
@@ -88,14 +89,7 @@ class UCDP:
                     if conflict_year_key not in conflict_years:
                         conflict_years.add(conflict_year_key)
                         all_data.append(record)
-                
-                print(f"Page {current_page} summary:")
-                print(f"- Records in this page: {len(current_results)}")
-                print(f"- New unique conflicts: {new_conflicts}")
-                print(f"- Total unique conflicts so far: {len(seen_conflicts)}")
-                print(f"- Total unique conflict-years so far: {len(conflict_years)}")
-                print(f"- Total valid records so far: {len(all_data)}")
-                
+                                
                 # Move to next page
                 current_page += 1
                 
@@ -109,14 +103,7 @@ class UCDP:
                     print(f"Response status: {response.status_code}")
                     print(f"Response text: {response.text[:200]}")
                 break
-        
-        # Final summary
-        print(f"\nFinal Summary:")
-        print(f"Total pages fetched: {current_page - 1}")
-        print(f"Total records fetched: {len(all_data)}")
-        print(f"Total unique conflicts: {len(seen_conflicts)}")
-        print(f"Total unique conflict-years: {len(conflict_years)}")
-        
+                
         return all_data
         
     def fetch_fatalities_data(self, 
@@ -370,9 +357,10 @@ class UCDP:
         
         return pivot_df
     
-    def calculate_active_duration(self, data: List[Dict[str, Any]]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def calculate_conflict_duration_panel(self, data: List[Dict[str, Any]]) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Calculate the average duration of active conflicts for each year and decade
+        Create a balanced panel dataset of conflict durations using the actual years
+        present in the data
         
         Parameters:
         -----------
@@ -385,45 +373,81 @@ class UCDP:
             yearly_avg: DataFrame with yearly average durations
             decade_avg: DataFrame with decade averages
         """
-        records = []
-        for record in data:
-            try:
-                start_date = pd.to_datetime(record.get('start_date'))
-                end_date = pd.to_datetime(record.get('ep_end_date'))
-                conflict_id = record.get('conflict_id')
-                
-                if pd.isna(end_date):  # If conflict is ongoing
-                    end_date = pd.Timestamp.now()
-                
-                # Create records for each year the conflict was active
-                for year in range(start_date.year, end_date.year + 1):
-                    duration_until_year = (pd.Timestamp(f"{year}-12-31") - start_date).days
-                    records.append({
-                        'year': year,
-                        'conflict_id': conflict_id,
-                        'duration': duration_until_year
-                    })
-                    
-            except (KeyError, ValueError, TypeError) as e:
-                continue
+        if not data:
+            print("No data to process")
+            return pd.DataFrame(), pd.DataFrame()
         
-        # Convert to DataFrame and calculate average duration for each year
-        df = pd.DataFrame(records)
-        yearly_avg = df.groupby('year').agg({
+        # Create DataFrame from records
+        df = pd.DataFrame(data)
+        
+        # Convert year to numeric
+        df['year'] = pd.to_numeric(df['year'], errors='coerce')
+        
+        # Get unique years and conflict IDs
+        years = sorted(df['year'].unique())
+        conflict_ids = df['conflict_id'].unique()
+        
+        # Create all possible year-conflict combinations
+        panel_years = [year for year in years for cid in conflict_ids]
+        panel_conflicts = [cid for year in years for cid in conflict_ids]
+        
+        panel_df = pd.DataFrame({
+            'year': panel_years,
+            'conflict_id': panel_conflicts
+        })
+        
+        # Get the first year each conflict appears
+        conflict_starts = df.groupby('conflict_id')['year'].min().reset_index()
+        conflict_starts.columns = ['conflict_id', 'start_year']
+        
+        # Merge panel with start years
+        merged_df = panel_df.merge(conflict_starts, on='conflict_id', how='left')
+        
+        # Merge with original data to get active status
+        active_conflicts = df[['year', 'conflict_id']].drop_duplicates()
+        active_conflicts['active'] = 1
+        
+        merged_df = merged_df.merge(
+            active_conflicts, 
+            on=['year', 'conflict_id'], 
+            how='left'
+        )
+        merged_df['active'] = merged_df['active'].fillna(0)
+        
+        # Ensure numeric types for year columns
+        merged_df['year'] = pd.to_numeric(merged_df['year'], errors='coerce')
+        merged_df['start_year'] = pd.to_numeric(merged_df['start_year'], errors='coerce')
+        
+        # Calculate duration (only for active conflicts)
+        merged_df['duration'] = np.where(
+            merged_df['active'] == 1,
+            merged_df['year'] - merged_df['start_year'] + 1,
+            0
+        )
+        
+        # Calculate yearly averages (only for active conflicts)
+        yearly_avg = merged_df[merged_df['active'] == 1].groupby('year').agg({
             'duration': 'mean',
             'conflict_id': 'count'
         }).reset_index()
-        yearly_avg.columns = ['year', 'avg_duration', 'conflict_count']
+        yearly_avg.columns = ['year', 'avg_duration', 'active_conflicts']
         
         # Calculate decade averages
         yearly_avg['decade'] = (yearly_avg['year'] // 10) * 10
         decade_avg = yearly_avg.groupby('decade').agg({
             'avg_duration': 'mean',
-            'conflict_count': 'mean'
+            'active_conflicts': 'mean'
         }).reset_index()
         
+        # Print summary
+        print(f"\nProcessed duration data summary:")
+        print(f"Years covered: {yearly_avg['year'].min()}-{yearly_avg['year'].max()}")
+        print(f"Average conflict duration: {yearly_avg['avg_duration'].mean():.2f} years")
+        print(f"Maximum conflict duration: {yearly_avg['avg_duration'].max():.2f} years")
+        print(f"Average number of active conflicts: {yearly_avg['active_conflicts'].mean():.2f}")
+        
         return yearly_avg, decade_avg
-    
+
 
     @staticmethod
     def get_conflict_colors() -> Dict[str, str]:
@@ -646,58 +670,112 @@ class ACLEDDataFetcher:
         # Suppress SSL warnings at instance level
         warnings.simplefilter('ignore', urllib3.exceptions.InsecureRequestWarning)
     
-    def fetch_data(self, start_date, end_date, max_retries=3):
+    def fetch_data(self, start_date, end_date, max_retries=3, chunk_months=12):
         """
-        Fetch data from ACLED API with improved error handling
+        Fetch data from ACLED API in smaller time chunks
+        
+        Parameters:
+        -----------
+        start_date : datetime
+            Start date for data fetch
+        end_date : datetime
+            End date for data fetch
+        max_retries : int
+            Maximum number of retry attempts
+        chunk_months : int
+            Number of months per request
+            
+        Returns:
+        --------
+        pd.DataFrame
+            Combined ACLED data
         """
-        # Remove fields parameter - let's get all fields by default
-        params = {
-            'key': self.api_key,
-            'email': self.email,
-            'event_date': f"{start_date.strftime('%Y-%m-%d')}|{end_date.strftime('%Y-%m-%d')}",
-            'event_date_where': 'BETWEEN',
-            'limit': 0
-        }
+        print(f"\nFetching ACLED data from {start_date} to {end_date}")
+        print(f"Breaking requests into {chunk_months}-month chunks")
         
-        session = requests.Session()
-        retry = requests.packages.urllib3.util.Retry(
-            total=max_retries,
-            backoff_factor=0.5,
-            status_forcelist=[500, 502, 503, 504]
-        )
-        adapter = requests.adapters.HTTPAdapter(max_retries=retry)
-        session.mount('https://', adapter)
+        all_data = []
+        current_start = start_date
         
-        try:
-            response = session.get(
-                self.base_url, 
-                params=params, 
-                verify=False  # Explicitly disable SSL verification
+        while current_start < end_date:
+            # Calculate end date for this chunk
+            current_end = min(
+                current_start + pd.DateOffset(months=chunk_months),
+                end_date
             )
-            response.raise_for_status()
             
-            # Debug response
-            json_response = response.json()
-            if 'error' in json_response:
-                print(f"API Error: {json_response['error']}")
-                return pd.DataFrame()
+            print(f"\nFetching chunk: {current_start.date()} to {current_end.date()}")
+            
+            params = {
+                'key': self.api_key,
+                'email': self.email,
+                'event_date': f"{current_start.strftime('%Y-%m-%d')}|{current_end.strftime('%Y-%m-%d')}",
+                'event_date_where': 'BETWEEN',
+                'limit': 0
+            }
+            
+            try:
+                session = requests.Session()
+                retry = requests.packages.urllib3.util.Retry(
+                    total=max_retries,
+                    backoff_factor=0.5,
+                    status_forcelist=[500, 502, 503, 504]
+                )
+                adapter = requests.adapters.HTTPAdapter(max_retries=retry)
+                session.mount('https://', adapter)
                 
-            if 'data' not in json_response:
-                print(f"Unexpected API response format. Response keys: {list(json_response.keys())}")
-                print(f"Raw response: {response.text[:500]}...")
-                return pd.DataFrame()
+                response = session.get(
+                    self.base_url, 
+                    params=params, 
+                    verify=False
+                )
+                response.raise_for_status()
+                
+                json_response = response.json()
+                
+                if 'error' in json_response:
+                    print(f"API Error for chunk: {json_response['error']}")
+                    continue
+                    
+                if 'data' not in json_response:
+                    print(f"Unexpected response format for chunk. Keys: {list(json_response.keys())}")
+                    continue
+                
+                chunk_data = json_response['data']
+                if chunk_data:
+                    all_data.extend(chunk_data)
+                    print(f"Successfully fetched {len(chunk_data)} records")
+                else:
+                    print("No data in this chunk")
+                    
+            except requests.exceptions.RequestException as e:
+                print(f"Request error for chunk: {str(e)}")
+                if hasattr(e, 'response'):
+                    print(f"Status code: {e.response.status_code}")
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error for chunk: {str(e)}")
+            except Exception as e:
+                print(f"Unexpected error for chunk: {str(e)}")
+            finally:
+                session.close()
+                
+            # Move to next chunk
+            current_start = current_end + pd.DateOffset(days=1)
             
-            return pd.DataFrame(json_response['data'])
-            
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching data: {str(e)}")
+            # Optional: Add a small delay between chunks
+            time.sleep(1)
+        
+        # Create final DataFrame
+        if all_data:
+            df = pd.DataFrame(all_data)
+            print(f"\nTotal records fetched: {len(df)}")
+            if not df.empty:
+                print(f"Date range: {df['event_date'].min()} to {df['event_date'].max()}")
+                print(f"Columns: {df.columns.tolist()}")
+            return df
+        else:
+            print("\nNo data fetched")
             return pd.DataFrame()
-        except ValueError as e:
-            print(f"Error parsing JSON response: {str(e)}")
-            print(f"Raw response: {response.text[:500]}...")
-            return pd.DataFrame()
-        finally:
-            session.close()
+    
 
     def _is_gang_related(self, row):
         """
@@ -1092,7 +1170,6 @@ class RefugeeAnalyzer(UNHCRDataFinder):
         
         # Print sample data for debugging
         sample_data = pd.DataFrame(data[:1])
-        print(f"\nSample data columns: {sample_data.columns.tolist()}")
         
         # Create DataFrame and convert numeric columns
         df = pd.DataFrame(data)
@@ -1141,15 +1218,7 @@ class RefugeeAnalyzer(UNHCRDataFinder):
             'refugees': 'refugees_hosted',
             'asylum_seekers': 'asylum_seekers_hosted'
         }))
-        
-        print(f"\nFound {len(origin_stats)} origin countries and {len(host_stats)} host countries")
-        
-        # Print top 5 origin and host countries for verification
-        print("\nTop 5 origin countries:")
-        print(origin_stats.nlargest(5, 'refugees_originated')[['country', 'refugees_originated']])
-        print("\nTop 5 host countries:")
-        print(host_stats.nlargest(5, 'refugees_hosted')[['country', 'refugees_hosted']])
-        
+                
         return origin_stats, host_stats
     
     def create_displacement_summary(self, year: int) -> pd.DataFrame:
