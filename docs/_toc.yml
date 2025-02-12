@@ -1,13 +1,9 @@
 format: jb-book
-root: README.md
+root: index
 
-parts:
-  - caption: Project Overview
-    chapters:
-      - file: README.md
-
-  - caption: Notebooks
-    chapters:
-      - file: notebooks/main.ipynb
-      # Add more notebooks as needed
-      # - file: notebooks/another_notebook.ipynb
+chapters:
+  - file: notebooks/main.ipynb
+    sections:
+      - file: notebooks/data_processing.ipynb
+      - file: notebooks/conflict_fatalities.ipynb
+      - file: notebooks/population_change.ipynb
