@@ -1,9 +1,13 @@
 format: jb-book
-root: README
+root: README.md
 
 parts:
+  - caption: Project Overview
+    chapters:
+      - file: README.md
 
-  - caption: Examples
-    numbered: True
+  - caption: Notebooks
     chapters:
       - file: notebooks/main.ipynb
+      # Add more notebooks as needed
+      # - file: notebooks/another_notebook.ipynb

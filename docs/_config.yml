@@ -5,6 +5,40 @@ repository:
   url: https://github.com/mglpurroy/slide-deck-analytics-1
   branch: main
 
-# Enable notebook execution
+# Build settings
+build:
+  number_sources: true
+
+# HTML-specific settings
+html:
+  home_page_in_navbar: true
+  use_repository_button: true
+  use_issues_button: true
+  use_edit_page_button: true
+  navbar_number_sections: true
+
+# Execution settings
 execute:
   execute_notebooks: "auto"
+  timeout: 300
+  allow_errors: false
+
+# Parse and read settings
+parse:
+  myst_enable_extensions:
+    - amsmath
+    - dollarmath
+    - links_to_headers
+    - replacements
+    - smartquotes
+    - substitution
+
+# Add these to ensure notebooks are included
+sphinx:
+  config:
+    html_show_sourcelink: false
+
+# Optional: Add custom CSS or JavaScript
+sphinx:
+  extra_extensions:
+    - sphinx_copybutton
