@@ -54,7 +54,6 @@ class UCDP:
                     'ordering': 'conflict_id,year'
                 }
                 
-                print(f"\nFetching page {current_page}...")
                 response = requests.get(url, params=params)
                 response.raise_for_status()
                 
@@ -64,8 +63,6 @@ class UCDP:
                 if current_page == 1:
                     total_count = data.get('TotalCount', 0)
                     total_pages = data.get('TotalPages', 0)
-                    print(f"Total records available: {total_count}")
-                    print(f"Total pages: {total_pages}")
                 
                 # Get results for this page
                 current_results = data.get('Result', [])
