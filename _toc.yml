@@ -1,9 +1,0 @@
-format: jb-book
-root: index
-
-chapters:
-  - file: main
-    sections:
-      - file: data_processing
-      - file: conflict_fatalities
-      - file: population_change

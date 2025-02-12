@@ -1,0 +1,10 @@
+title: FCV Slide Deck Analytics
+author: Miguel Purroy
+
+repository:
+  url: https://github.com/mglpurroy/slide-deck-analytics
+  branch: master
+
+# Enable notebook execution
+execute:
+  execute_notebooks: "auto"

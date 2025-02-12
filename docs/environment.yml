@@ -1,0 +1,61 @@
+name: slide-deck-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python version
+  - python=3.9
+
+  # Core scientific computing
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+
+  # Data processing
+  - openpyxl
+  - xlrd
+  - pycountry
+  - country-converter
+
+  # Visualization
+  - matplotlib
+  - seaborn
+  - plotly
+
+  # Networking and web
+  - requests
+  - urllib3
+  - certifi
+
+  # Jupyter ecosystem
+  - jupyter
+  - jupyterlab
+  - notebook
+  - ipykernel
+
+  # Development and debugging
+  - pip
+  - pytest
+  - black
+  - flake8
+  - mypy
+
+  # System utilities
+  - ca-certificates
+  - openssl
+
+  # Optional scientific/geospatial tools
+  - geopandas
+  - fiona
+
+  # Pip-installed packages (for those not available via conda)
+  - pip:
+    - typing-extensions
+    - statsmodels
+    - logging
+    - myst-parser
+    - jupyter-book
+
+variables:
+  PYTHONPATH: ${CONDA_PREFIX}/src
