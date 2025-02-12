@@ -32,3 +32,4 @@ The analysis uses multiple datasets, including:
 - **Aggregation**: Data is grouped by key dimensions (e.g., region, income group, conflict type) to provide meaningful comparisons.
 
 ```{tableofcontents}
+```
