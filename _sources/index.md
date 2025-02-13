@@ -4,10 +4,16 @@
 
 # Welcome to the FCV Slide Analytics Deck
 
+:::{note}
+⚠️ **This is a preliminary version and is under constant development.** The content, figures, and analyses may change as improvements are made. Please check back for updates and feel free to provide feedback!
+:::
+
 This repository contains the Jupyter Notebook used to generate key figures and insights for the FCV (Fragility, Conflict, and Violence) slide deck. The notebook processes various datasets and produces visualizations related to conflict trends, armed conflict duration, coup attempts, forcibly displaced persons, organized crime, and development indicators.
 
 
-# Content
+# Figures and Tables
+
+📌 **Please CLICK on the sections below** to explore the figures, tables, and analysis.
 
 ```{tableofcontents}
 ```
