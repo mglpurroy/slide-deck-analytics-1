@@ -20,15 +20,29 @@ This repository contains the Jupyter Notebook used to generate key figures and i
 
 # Data Sources
 
+# Data Sources
+
 The analysis uses multiple datasets, including:
 
-- **ACLED (Armed Conflict Location & Event Data Project)**: Provides real-time data on political violence and protests.
-- **UCDP (Uppsala Conflict Data Program)**: Offers detailed conflict data, including battle-related deaths.
-- **World Bank Development Indicators**: Covers socioeconomic data such as population projections, education, and sanitation.
-- **UNHCR (United Nations High Commissioner for Refugees)**: Data on forcibly displaced persons.
-- **OECD States of Fragility 2022**: Contains scores and metrics related to various dimensions of fragility, including political, economic, and social factors.
-- **UN Population Data**:
-- **Poverty, Prosperity and Planet Report 2024**:
+- **[ACLED (Armed Conflict Location & Event Data Project)](https://acleddata.com/)**: Provides real-time data on political violence and protests.
+
+- **[UCDP (Uppsala Conflict Data Program)](https://ucdp.uu.se/)**: Offers detailed conflict data, including battle-related deaths.
+
+- **[World Bank Development Indicators](https://databank.worldbank.org/source/world-development-indicators)**: Covers socioeconomic data such as population projections, education, and sanitation.
+
+- **[UNHCR (United Nations High Commissioner for Refugees)](https://www.unhcr.org/data.html)**: Data on forcibly displaced persons.
+
+- **[OECD States of Fragility 2022](https://www.oecd.org/dac/states-of-fragility-2022-bc0ab39e-en.htm)**: Contains scores and metrics related to various dimensions of fragility, including political, economic, and social factors.
+
+- **[UN Population Data](https://population.un.org/wpp/)**: Provides demographic data, including population estimates and projections.
+
+- **[Poverty, Prosperity and Planet Report 2024](https://www.worldbank.org/en/publication/poverty-and-shared-prosperity)**: Covers global poverty trends and shared prosperity insights.
+
+- **[Global Instances of Coups (GIC)](https://oefresearch.org/publications/global-instances-coups)**: Powell, Jonathan & Clayton Thyne. 2011. *Global Instances of Coups from 1950-Present*. Journal of Peace Research 48(2):249-259. Tracks coup attempts globally.
+
+- **[Global Criminality Index](https://globalinitiative.net/analysis/global-organized-crime-index-2023/)**: Published by the Global Initiative Against Transnational Organized Crime, the *Global Organized Crime Index 2023* provides a comprehensive assessment of organized crime worldwide.
+
+
 
 ## Methodology
 
