@@ -2,7 +2,7 @@
 ![License](https://img.shields.io/github/license/mglpurroy/slide-deck-analytics-1)
 [![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/mglpurroy/slide-deck-analytics-1/main?urlpath=%2Fdoc%2Ftree%2Fdocs%2Fnotebooks%2Fmain.ipynb)
 
-# Welcome to the FCV Slide Analytics Deck
+# Welcome to the FCV Analytics Notebook
 
 :::{note}
 ⚠️ **This is a preliminary version and is under constant development.** The content, figures, and analyses may change as improvements are made. Please check back for updates and feel free to provide feedback!
