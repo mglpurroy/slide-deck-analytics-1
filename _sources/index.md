@@ -20,11 +20,10 @@ This repository contains the Jupyter Notebook used to generate key figures and i
 
 # Data Sources
 
-# Data Sources
 
 The analysis uses multiple datasets, including:
 
-- **[ACLED (Armed Conflict Location & Event Data Project)](https://acleddata.com/)**: Provides real-time data on political violence and protests.
+- **[ACLED (Armed Conflict Location & Event Data Project)](https://acleddata.com/)**: The Armed Conflict Location & Event Data Project (ACLED) is a disaggregated data collection, analysis, and crisis mapping project. ACLED collects information on the dates, actors, locations, fatalities, and types of all reported political violence and protest events around the world. The raw data is available through a license obtained by the World Bank.
 
 - **[UCDP (Uppsala Conflict Data Program)](https://ucdp.uu.se/)**: Offers detailed conflict data, including battle-related deaths.
 
