@@ -37,8 +37,8 @@ nbclient.exceptions.CellTimeoutError: A cell timed out while it was being execut
 The message was: Cell execution timed out.
 Here is a preview of the cell contents:
 -------------------
-['# %%', "# jupyter: {'source_hidden': true}", '# Fetch UCDP data', 'raw_data = ucdp.fetch_ucdp_data()', 'df_conflicts = ucdp.process_conflict_data(raw_data)']
+['import pandas as pd', 'import requests', 'import time', 'import numpy as np', 'from pathlib import Path']
 ...
-['    return fig', '', '# Create and display visualization', 'fig = create_conflict_plot(df_conflicts)', 'plt.show()']
+['    )', '    ', '    # Display or save the data', '    print(comprehensive_data)', "    comprehensive_data.to_csv('comprehensive_displacement_data.csv', index=False)"]
 -------------------
 
