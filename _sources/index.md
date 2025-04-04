@@ -1,6 +1,5 @@
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
 ![License](https://img.shields.io/github/license/mglpurroy/slide-deck-analytics-1)
-[![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/mglpurroy/slide-deck-analytics-1/main?urlpath=%2Fdoc%2Ftree%2Fdocs%2Fnotebooks%2Fmain.ipynb)
 
 # Welcome to the FCV Analytics Notebook
 
