@@ -420,7 +420,6 @@
 <span class="c1"># Initialize data processors</span>
 <span class="n">ucdp</span> <span class="o">=</span> <span class="n">UCDP</span><span class="p">()</span>
 <span class="n">gic</span> <span class="o">=</span> <span class="n">GIC</span><span class="p">()</span>
-<span class="n">acled</span> <span class="o">=</span> <span class="n">ACLEDDataFetcher</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;FVlH2Cg6J1EmOKTxxsUX&quot;</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="s2">&quot;mpurroyvitola@worldbank.org&quot;</span><span class="p">)</span>
 <span class="n">region_mapper</span> <span class="o">=</span> <span class="n">RegionMapper</span><span class="p">()</span>
 <span class="n">unhcr</span> <span class="o">=</span> <span class="n">UNHCRDataFinder</span><span class="p">()</span>
 <span class="n">wb</span> <span class="o">=</span> <span class="n">WorldBankAPI</span><span class="p">()</span>
@@ -488,14 +487,25 @@ Armed conflict refers to a contested incompatibility that concerns government an
     <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Number of Armed Conflicts by Type, 1946-2024&#39;</span><span class="p">,</span>
                 <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
     
-    <span class="c1"># Set x-axis range</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="c1"># Set x-axis range and year markers</span>
+    <span class="n">start_year</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">end_year</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">start_year</span><span class="p">,</span> <span class="n">end_year</span><span class="p">)</span>
+    
+    <span class="c1"># Create year markers every 2 years</span>
+    <span class="n">year_ticks</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_year</span> <span class="o">-</span> <span class="p">(</span><span class="n">start_year</span> <span class="o">%</span> <span class="mi">5</span><span class="p">),</span>  <span class="c1"># Round to nearest 5</span>
+                      <span class="n">end_year</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> 
+                      <span class="mi">2</span><span class="p">)</span>  <span class="c1"># Step of 5 years</span>
+    
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">year_ticks</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">year_ticks</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+    
+    <span class="c1"># Add minor ticks for individual years</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_minor_locator</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">MultipleLocator</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
     
     <span class="c1"># Add grid</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
-    
-    <span class="c1"># Rotate x-axis labels</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>  <span class="c1"># Minor grid for years</span>
     
     <span class="c1"># Add legend inside the plot with two columns</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span>
@@ -527,7 +537,7 @@ Armed conflict refers to a contested incompatibility that concerns government an
 </div>
 </details>
 <div class="cell_output docutils container">
-<img alt="../_images/24afbeec11ceb531361a1c574eeb5dea6bddfe8210e6d58850657e308a37b022.png" src="../_images/24afbeec11ceb531361a1c574eeb5dea6bddfe8210e6d58850657e308a37b022.png" />
+<img alt="../_images/9e7d14129eddd0a740593995eb5cdd7b6318ad62bf687221110f03ca88c91768.png" src="../_images/9e7d14129eddd0a740593995eb5cdd7b6318ad62bf687221110f03ca88c91768.png" />
 </div>
 </div>
 <p><sub><em>Source: <a class="reference external" href="https://ucdp.uu.se/">UCDP (Uppsala Conflict Data Program)</a></em></sub></p>
@@ -576,14 +586,26 @@ Armed conflict refers to a contested incompatibility that concerns government an
     <span class="n">ax1_twin</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">yearly_avg</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">],</span> <span class="n">yearly_avg</span><span class="p">[</span><span class="s1">&#39;active_conflicts&#39;</span><span class="p">],</span>
                  <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#4A90E2&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
     
+    <span class="c1"># Set x-axis markers for yearly plot</span>
+    <span class="n">start_year</span> <span class="o">=</span> <span class="n">yearly_avg</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">end_year</span> <span class="o">=</span> <span class="n">yearly_avg</span><span class="p">[</span><span class="s1">&#39;year&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">year_ticks</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_year</span> <span class="o">-</span> <span class="p">(</span><span class="n">start_year</span> <span class="o">%</span> <span class="mi">5</span><span class="p">),</span>  <span class="c1"># Round to nearest 5</span>
+                      <span class="n">end_year</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> 
+                    <span class="mi">2</span><span class="p">)</span>  <span class="c1"># Step of 2 years</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">year_ticks</span><span class="p">)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">year_ticks</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+    
+    <span class="c1"># Add minor ticks for individual years</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_minor_locator</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">MultipleLocator</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;major&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+    
     <span class="c1"># Customize the line plot</span>
     <span class="n">ax1</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
     <span class="n">ax1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Average Duration (years)&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#FF6B6B&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="n">ax1_twin</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Number of Active Conflicts&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#4A90E2&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Average Duration and Count of Active Armed Conflicts by Year&#39;</span><span class="p">,</span> 
                  <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
-    <span class="n">ax1</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
-    <span class="n">ax1</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
     
     <span class="c1"># Plot 2: Decade averages bar plot</span>
     <span class="n">bars</span> <span class="o">=</span> <span class="n">ax2</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">decade_avg</span><span class="p">[</span><span class="s1">&#39;decade&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">),</span> 
@@ -595,12 +617,21 @@ Armed conflict refers to a contested incompatibility that concerns government an
     <span class="n">ax2_twin</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">decade_avg</span><span class="p">)),</span> <span class="n">decade_avg</span><span class="p">[</span><span class="s1">&#39;active_conflicts&#39;</span><span class="p">],</span>
                  <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#4A90E2&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
     
+    <span class="c1"># Set x-axis markers for decade plot</span>
+    <span class="n">decade_labels</span> <span class="o">=</span> <span class="n">decade_avg</span><span class="p">[</span><span class="s1">&#39;decade&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">decade_labels</span><span class="p">)))</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">decade_labels</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+    
+    <span class="c1"># Add minor ticks for mid-decade years</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_minor_locator</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">MultipleLocator</span><span class="p">(</span><span class="mf">0.5</span><span class="p">))</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;major&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+    
     <span class="c1"># Customize the bar plot</span>
     <span class="n">ax2</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Decade&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Average Duration (years)&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#2D9348&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="n">ax2_twin</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Average Active Conflicts&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#4A90E2&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="n">ax2</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Average Conflict Duration and Count by Decade&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
-    <span class="n">ax2</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
     
     <span class="c1"># Add value labels on the bars</span>
     <span class="k">for</span> <span class="n">bar</span> <span class="ow">in</span> <span class="n">bars</span><span class="p">:</span>
@@ -623,13 +654,13 @@ Armed conflict refers to a contested incompatibility that concerns government an
 </div>
 </details>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-02-17 18:29:11,899 - INFO: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-04-03 21:10:17,726 - INFO: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-02-17 18:29:11,901 - INFO: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-04-03 21:10:17,728 - INFO: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
 </pre></div>
 </div>
-<img alt="../_images/f9d664a92ff3a38beb0dfd9ffce97631a181a4010eb07eacbcd524c7bbadb162.png" src="../_images/f9d664a92ff3a38beb0dfd9ffce97631a181a4010eb07eacbcd524c7bbadb162.png" />
+<img alt="../_images/c50246d1c9c4e7b127ca86691048e91660082674b783d70a1838f936f9c5c1a0.png" src="../_images/c50246d1c9c4e7b127ca86691048e91660082674b783d70a1838f936f9c5c1a0.png" />
 </div>
 </div>
 <p><sub><em>Source: <a class="reference external" href="https://ucdp.uu.se/">UCDP (Uppsala Conflict Data Program)</a></em></sub></p>
@@ -720,8 +751,21 @@ Armed conflict refers to a contested incompatibility that concerns government an
     <span class="n">ax</span><span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="s1">&#39;right&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">labelsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     
-    <span class="c1"># Add grid</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="c1"># Set x-axis markers</span>
+    <span class="n">start_year</span> <span class="o">=</span> <span class="mi">2013</span>
+    <span class="n">end_year</span> <span class="o">=</span> <span class="mi">2024</span>
+    
+    <span class="c1"># Major ticks every year</span>
+    <span class="n">major_ticks</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_year</span><span class="p">,</span> <span class="n">end_year</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">major_ticks</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">major_ticks</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+    
+    <span class="c1"># Minor ticks for half-years</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_minor_locator</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">MultipleLocator</span><span class="p">(</span><span class="mf">0.5</span><span class="p">))</span>
+    
+    <span class="c1"># Enhanced grid system</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;major&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
     
     <span class="c1"># Add labels and title</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s1">&#39;ACLED Conflict-Related Deaths by Region&#39;</span><span class="p">,</span> 
@@ -731,8 +775,8 @@ Armed conflict refers to a contested incompatibility that concerns government an
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Year&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Number of Deaths&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     
-    <span class="c1"># Set axis limits</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">2013</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span>
+    <span class="c1"># Set axis limits with some padding</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">start_year</span> <span class="o">-</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">end_year</span> <span class="o">+</span> <span class="mf">0.2</span><span class="p">)</span>
     
     <span class="c1"># Add legend with enhanced styling</span>
     <span class="n">legend</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;Regions&#39;</span><span class="p">,</span>
@@ -786,7 +830,7 @@ Armed conflict refers to a contested incompatibility that concerns government an
                 })
             );
         </script>
-    </div><img alt="../_images/4f30564d2e13a21215c85c058f1286f7f91ff27a2b61b7f7ad0d032ea8e09a80.png" src="../_images/4f30564d2e13a21215c85c058f1286f7f91ff27a2b61b7f7ad0d032ea8e09a80.png" />
+    </div><img alt="../_images/eb005cdc948d4386427ac3a58bca69784d53c0efa39e5b98f49838125ca4f203.png" src="../_images/eb005cdc948d4386427ac3a58bca69784d53c0efa39e5b98f49838125ca4f203.png" />
 </div>
 </div>
 <p><sub><em>Source: <a class="reference external" href="https://acleddata.com/">ACLED (Armed Conflict Location &amp; Event Data Project)</a></em></sub></p>
@@ -857,8 +901,21 @@ Armed conflict refers to a contested incompatibility that concerns government an
     <span class="n">ax</span><span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="s1">&#39;right&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">labelsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     
-    <span class="c1"># Add grid</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="c1"># Set x-axis markers</span>
+    <span class="n">start_year</span> <span class="o">=</span> <span class="mi">2019</span>
+    <span class="n">end_year</span> <span class="o">=</span> <span class="mi">2024</span>
+    
+    <span class="c1"># Major ticks for each year</span>
+    <span class="n">major_ticks</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_year</span><span class="p">,</span> <span class="n">end_year</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">major_ticks</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">major_ticks</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+    
+    <span class="c1"># Minor ticks for quarters</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_minor_locator</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">MultipleLocator</span><span class="p">(</span><span class="mf">0.25</span><span class="p">))</span>
+    
+    <span class="c1"># Enhanced grid system</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;major&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
     
     <span class="c1"># Add labels and title</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s1">&#39;ACLED Conflict-Related Deaths by Region&#39;</span><span class="p">,</span> 
@@ -868,8 +925,8 @@ Armed conflict refers to a contested incompatibility that concerns government an
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Year&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Number of Deaths&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     
-    <span class="c1"># Set axis limits</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">2019</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span>
+    <span class="c1"># Set axis limits with padding</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">start_year</span> <span class="o">-</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">end_year</span> <span class="o">+</span> <span class="mf">0.2</span><span class="p">)</span>
     
     <span class="c1"># Format y-axis with thousands separator</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">FuncFormatter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">format</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="s1">&#39;,&#39;</span><span class="p">)))</span>
@@ -891,15 +948,12 @@ Armed conflict refers to a contested incompatibility that concerns government an
 
 <span class="n">plot</span> <span class="o">=</span> <span class="n">plot_acled_regional_deaths_lac</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s1">&#39;acled.csv&#39;</span><span class="p">)</span>
 <span class="n">plot</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-<span class="c1"># Create the plot</span>
-<span class="c1"># plot = plot_acled_regional_deaths_lac(df_acled_crd)</span>
-<span class="c1"># plot.show()</span>
 </pre></div>
 </div>
 </div>
 </details>
 <div class="cell_output docutils container">
-<img alt="../_images/10fc7025934ffd525513177ebba38f792c9044c97206c9db41f689665f9eb2da.png" src="../_images/10fc7025934ffd525513177ebba38f792c9044c97206c9db41f689665f9eb2da.png" />
+<img alt="../_images/d614f4d8fc3599be374c11409b3511bb3509528a8e91ca54ab7ede71e8f0109a.png" src="../_images/d614f4d8fc3599be374c11409b3511bb3509528a8e91ca54ab7ede71e8f0109a.png" />
 </div>
 </div>
 <p><sub><em>Source: <a class="reference external" href="https://acleddata.com/">ACLED (Armed Conflict Location &amp; Event Data Project)</a></em></sub></p>
@@ -992,8 +1046,21 @@ Armed conflict refers to a contested incompatibility that concerns government an
     <span class="n">ax</span><span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="s1">&#39;right&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">labelsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     
-    <span class="c1"># Add grid</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="c1"># Set x-axis markers</span>
+    <span class="n">start_year</span> <span class="o">=</span> <span class="mi">2013</span>
+    <span class="n">end_year</span> <span class="o">=</span> <span class="mi">2024</span>
+    
+    <span class="c1"># Major ticks every year</span>
+    <span class="n">major_ticks</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_year</span><span class="p">,</span> <span class="n">end_year</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">major_ticks</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">major_ticks</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+    
+    <span class="c1"># Minor ticks for half-years</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_minor_locator</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">MultipleLocator</span><span class="p">(</span><span class="mf">0.5</span><span class="p">))</span>
+    
+    <span class="c1"># Enhanced grid system</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;major&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
     
     <span class="c1"># Add labels and title</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s1">&#39;ACLED Conflict-Related Deaths by Income Group&#39;</span><span class="p">,</span> 
@@ -1003,8 +1070,8 @@ Armed conflict refers to a contested incompatibility that concerns government an
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Year&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Number of Deaths&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     
-    <span class="c1"># Set axis limits</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">2013</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span>
+    <span class="c1"># Set axis limits with padding</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">start_year</span> <span class="o">-</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">end_year</span> <span class="o">+</span> <span class="mf">0.2</span><span class="p">)</span>
     
     <span class="c1"># Add legend with enhanced styling</span>
     <span class="n">legend</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;Income Groups&#39;</span><span class="p">,</span>
@@ -1035,7 +1102,6 @@ Armed conflict refers to a contested incompatibility that concerns government an
     
     <span class="k">return</span> <span class="n">plt</span>
 
-
 <span class="n">plot</span> <span class="o">=</span> <span class="n">plot_acled_income_deaths</span><span class="p">(</span>
     <span class="n">data_dir</span> <span class="o">/</span> <span class="s1">&#39;acled.csv&#39;</span><span class="p">,</span>
     <span class="n">data_dir</span> <span class="o">/</span> <span class="s1">&#39;lend_group.xlsx&#39;</span>
@@ -1056,7 +1122,7 @@ Low income: 773,088 deaths (55.5%)
 Not classified: 5,961 deaths (0.4%)
 </pre></div>
 </div>
-<img alt="../_images/1e80710d374ed721ecdc84522df982e506909b7e4d3c81140fcb8db7b6feb0ef.png" src="../_images/1e80710d374ed721ecdc84522df982e506909b7e4d3c81140fcb8db7b6feb0ef.png" />
+<img alt="../_images/03a8b2c697e6b56715776f62fc93de7e3d64333b40f401d4a2fe5f7027456d49.png" src="../_images/03a8b2c697e6b56715776f62fc93de7e3d64333b40f401d4a2fe5f7027456d49.png" />
 </div>
 </div>
 <p><sub><em>Source: <a class="reference external" href="https://acleddata.com/">ACLED (Armed Conflict Location &amp; Event Data Project)</a></em></sub></p>
@@ -1084,7 +1150,6 @@ Not classified: 5,961 deaths (0.4%)
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
-
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_ucdp_fatalities</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> 
                           <span class="n">output_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1107,6 +1172,7 @@ Not classified: 5,961 deaths (0.4%)
     
     <span class="c1"># Create the figure with higher resolution</span>
     <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+    <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
     
     <span class="c1"># Extract data for each violence type</span>
     <span class="n">years</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span>
@@ -1120,6 +1186,22 @@ Not classified: 5,961 deaths (0.4%)
                  <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;State-based Violence&#39;</span><span class="p">,</span> <span class="s1">&#39;One-sided Violence&#39;</span><span class="p">,</span> <span class="s1">&#39;Non-state Violence&#39;</span><span class="p">],</span>
                  <span class="n">colors</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;#2D9CDB&#39;</span><span class="p">,</span> <span class="s1">&#39;#219653&#39;</span><span class="p">,</span> <span class="s1">&#39;#F2994A&#39;</span><span class="p">],</span>  <span class="c1"># Blue, Green, Orange</span>
                  <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+    
+    <span class="c1"># Set x-axis markers</span>
+    <span class="n">start_year</span> <span class="o">=</span> <span class="mi">1995</span>
+    <span class="n">end_year</span> <span class="o">=</span> <span class="mi">2024</span>
+    
+    <span class="c1"># Major ticks every 5 years</span>
+    <span class="n">major_ticks</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_year</span> <span class="o">-</span> <span class="p">(</span><span class="n">start_year</span> <span class="o">%</span> <span class="mi">5</span><span class="p">),</span> <span class="n">end_year</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">major_ticks</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">major_ticks</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+    
+    <span class="c1"># Minor ticks for individual years</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_minor_locator</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">MultipleLocator</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    
+    <span class="c1"># Enhanced grid system</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;major&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
     
     <span class="c1"># Customize the plot</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Year&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
@@ -1136,10 +1218,6 @@ Not classified: 5,961 deaths (0.4%)
     
     <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">FuncFormatter</span><span class="p">(</span><span class="n">format_func</span><span class="p">))</span>
     
-    <span class="c1"># Enhance grid</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
-    
     <span class="c1"># Remove top and right spines</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="s1">&#39;top&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="s1">&#39;right&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
@@ -1152,11 +1230,8 @@ Not classified: 5,961 deaths (0.4%)
     <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Conflict-related Fatalities by Type of Violence (1995-2024)&#39;</span><span class="p">,</span> 
              <span class="n">pad</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
     
-    <span class="c1"># Set x-axis limits to full years</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">years</span><span class="p">),</span> <span class="mi">2024</span><span class="p">)</span>
-    
-    <span class="c1"># Rotate x-axis labels slightly for better readability</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+    <span class="c1"># Set x-axis limits with padding</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="n">start_year</span> <span class="o">-</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">end_year</span> <span class="o">+</span> <span class="mf">0.2</span><span class="p">)</span>
     
     <span class="c1"># Add subtle background color</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;#f8f9fa&#39;</span><span class="p">)</span>
@@ -1173,6 +1248,7 @@ Not classified: 5,961 deaths (0.4%)
     
     <span class="k">return</span> <span class="n">fig</span>
 
+<span class="c1"># Rest of the code remains the same</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">prepare_ucdp_fatalities_data</span><span class="p">(</span><span class="n">data_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Prepare UCDP fatalities data for plotting</span>
@@ -1205,7 +1281,6 @@ Not classified: 5,961 deaths (0.4%)
     
     <span class="k">return</span> <span class="n">yearly_fatalities</span>
 
-
 <span class="n">df_fat</span> <span class="o">=</span> <span class="n">prepare_ucdp_fatalities_data</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span>
 <span class="n">plot</span> <span class="o">=</span> <span class="n">plot_ucdp_fatalities</span><span class="p">(</span><span class="n">df_fat</span><span class="p">)</span>
 <span class="n">plot</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -1214,11 +1289,11 @@ Not classified: 5,961 deaths (0.4%)
 </div>
 </details>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>C:\Users\wb617270\AppData\Local\Temp\ipykernel_30768\3306066592.py:138: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>C:\Users\wb617270\AppData\Local\Temp\ipykernel_194052\89050950.py:147: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
   plot.show()
 </pre></div>
 </div>
-<img alt="../_images/cc380507e4a4c9d43d6bca6247069901547622efd95e8eed8c928b0e8c0d7626.png" src="../_images/cc380507e4a4c9d43d6bca6247069901547622efd95e8eed8c928b0e8c0d7626.png" />
+<img alt="../_images/f38bf26f3e9a51b26f03f0e8ec1840c0530ba6ac1122e50497c306c6c05148fa.png" src="../_images/f38bf26f3e9a51b26f03f0e8ec1840c0530ba6ac1122e50497c306c6c05148fa.png" />
 </div>
 </div>
 <p><sub><em>Source: <a class="reference external" href="https://ucdp.uu.se/">UCDP (Uppsala Conflict Data Program)</a></em></sub></p>
@@ -1269,11 +1344,20 @@ Not classified: 5,961 deaths (0.4%)
     <span class="p">)</span>
     
     <span class="c1"># Create the figure</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+    <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
     
-    <span class="c1"># Filter years between 1995 and 2024</span>
-    <span class="n">fatalities_pivot</span> <span class="o">=</span> <span class="n">fatalities_pivot</span><span class="p">[(</span><span class="n">fatalities_pivot</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="mi">1995</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">fatalities_pivot</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="mi">2025</span><span class="p">)]</span>
+    <span class="c1"># Set start year to 1995 and get end year from data</span>
+    <span class="n">start_year</span> <span class="o">=</span> <span class="mi">1995</span>
+    <span class="n">end_year</span> <span class="o">=</span> <span class="n">fatalities_pivot</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    
+    <span class="c1"># Filter years from 1995 onwards</span>
+    <span class="n">fatalities_pivot</span> <span class="o">=</span> <span class="n">fatalities_pivot</span><span class="p">[</span>
+        <span class="p">(</span><span class="n">fatalities_pivot</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">start_year</span><span class="p">)</span> <span class="o">&amp;</span> 
+        <span class="p">(</span><span class="n">fatalities_pivot</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">end_year</span><span class="p">)</span>
+    <span class="p">]</span>
     <span class="n">years</span> <span class="o">=</span> <span class="n">fatalities_pivot</span><span class="o">.</span><span class="n">index</span>
+    
     <span class="n">income_groups</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;High income&#39;</span><span class="p">,</span> <span class="s1">&#39;Upper middle income&#39;</span><span class="p">,</span> <span class="s1">&#39;Lower middle income&#39;</span><span class="p">,</span> <span class="s1">&#39;Low income&#39;</span><span class="p">]</span>
     
     <span class="c1"># Filter and reorder columns based on income groups that exist in the data</span>
@@ -1289,8 +1373,20 @@ Not classified: 5,961 deaths (0.4%)
                  <span class="n">labels</span><span class="o">=</span><span class="n">available_groups</span><span class="p">,</span>
                  <span class="n">colors</span><span class="o">=</span><span class="n">colors</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">available_groups</span><span class="p">)])</span>
     
+    <span class="c1"># Major ticks every 2 years</span>
+    <span class="n">major_ticks</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_year</span> <span class="o">-</span> <span class="p">(</span><span class="n">start_year</span> <span class="o">%</span> <span class="mi">2</span><span class="p">),</span> <span class="n">end_year</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">major_ticks</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">major_ticks</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+    
+    <span class="c1"># Minor ticks for years in between</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_minor_locator</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">MultipleLocator</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    
+    <span class="c1"># Enhanced grid system</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;major&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+    
     <span class="c1"># Customize the plot</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Year&#39;</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Fatalities&#39;</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     
     <span class="c1"># Format y-axis with thousands</span>
@@ -1301,15 +1397,19 @@ Not classified: 5,961 deaths (0.4%)
     <span class="n">current_values</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">get_yticks</span><span class="p">()</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="n">current_values</span><span class="p">)</span>
     
-    <span class="c1"># Customize grid (only horizontal lines)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
-    
     <span class="c1"># Remove top and right spines</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="s1">&#39;top&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="s1">&#39;right&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
     
     <span class="c1"># Customize legend</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    
+    <span class="c1"># Set x-axis limits with padding</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="n">start_year</span> <span class="o">-</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">end_year</span> <span class="o">+</span> <span class="mf">0.2</span><span class="p">)</span>
+    
+    <span class="c1"># Add title</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Fatalities by Income Group (</span><span class="si">{</span><span class="n">start_year</span><span class="si">}</span><span class="s1">-</span><span class="si">{</span><span class="n">end_year</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">,</span>
+             <span class="n">pad</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
     
     <span class="c1"># Adjust layout</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
@@ -1323,7 +1423,7 @@ Not classified: 5,961 deaths (0.4%)
 </div>
 </details>
 <div class="cell_output docutils container">
-<img alt="../_images/68576fe212b46e5b118c8e11b6d0fd70002b929855e6c8360152ec209a7f8bf1.png" src="../_images/68576fe212b46e5b118c8e11b6d0fd70002b929855e6c8360152ec209a7f8bf1.png" />
+<img alt="../_images/ba52ea6031afe984426dc9b5415f13ed7cebf409365351e3335895369102868b.png" src="../_images/ba52ea6031afe984426dc9b5415f13ed7cebf409365351e3335895369102868b.png" />
 </div>
 </div>
 <p><sub><em>Source: <a class="reference external" href="https://ucdp.uu.se/">UCDP (Uppsala Conflict Data Program)</a></em></sub></p>
@@ -1992,6 +2092,47 @@ Not classified: 5,961 deaths (0.4%)
 </details>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Fetching data with params: {&#39;yearFrom&#39;: 2000, &#39;yearTo&#39;: 2024}
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>No more items found for population, stopping at page 115
+Fetched 113303 population data items
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>No more items found for unrwa, stopping at page 2
+Fetched 100 UNRWA data items
+</pre></div>
+</div>
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">KeyboardInterrupt</span><span class="g g-Whitespace">                         </span>Traceback (most recent call last)
+<span class="n">Cell</span> <span class="n">In</span><span class="p">[</span><span class="mi">11</span><span class="p">],</span> <span class="n">line</span> <span class="mi">339</span>
+<span class="g g-Whitespace">    </span><span class="mi">333</span> <span class="c1"># Main execution</span>
+<span class="g g-Whitespace">    </span><span class="mi">334</span> <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="g g-Whitespace">    </span><span class="mi">335</span>     <span class="c1"># Specify the data directory</span>
+<span class="g g-Whitespace">    </span><span class="mi">336</span>     <span class="c1"># data_dir = Path(&#39;.&#39;)  # Change this to your actual data directory</span>
+<span class="g g-Whitespace">    </span><span class="mi">337</span>     
+<span class="g g-Whitespace">    </span><span class="mi">338</span>     <span class="c1"># Get comprehensive displacement data</span>
+<span class="ne">--&gt; </span><span class="mi">339</span>     <span class="n">comprehensive_data</span> <span class="o">=</span> <span class="n">get_comprehensive_displacement_data</span><span class="p">(</span>
+<span class="g g-Whitespace">    </span><span class="mi">340</span>         <span class="n">data_dir</span><span class="p">,</span> 
+<span class="g g-Whitespace">    </span><span class="mi">341</span>         <span class="n">year_from</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> 
+<span class="g g-Whitespace">    </span><span class="mi">342</span>         <span class="n">year_to</span><span class="o">=</span><span class="mi">2024</span>
+<span class="g g-Whitespace">    </span><span class="mi">343</span>     <span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">345</span>     <span class="c1"># Display or save the data</span>
+<span class="g g-Whitespace">    </span><span class="mi">346</span>     <span class="nb">print</span><span class="p">(</span><span class="n">comprehensive_data</span><span class="p">)</span>
+
+<span class="nn">Cell In[11], line 84,</span> in <span class="ni">get_comprehensive_displacement_data</span><span class="nt">(data_dir, year_from, year_to)</span>
+<span class="g g-Whitespace">     </span><span class="mi">81</span> <span class="n">unrwa_data</span> <span class="o">=</span> <span class="n">fetch_paginated_data</span><span class="p">(</span><span class="s1">&#39;unrwa&#39;</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">82</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fetched </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">unrwa_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> UNRWA data items&quot;</span><span class="p">)</span>
+<span class="ne">---&gt; </span><span class="mi">84</span> <span class="n">idp_data</span> <span class="o">=</span> <span class="n">fetch_paginated_data</span><span class="p">(</span><span class="s1">&#39;idmc&#39;</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">85</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fetched </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">idp_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> IDP data items&quot;</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">87</span> <span class="c1"># Convert to DataFrames</span>
+
+<span class="nn">Cell In[11], line 61,</span> in <span class="ni">fetch_paginated_data</span><span class="nt">(endpoint, params)</span>
+<span class="g g-Whitespace">     </span><span class="mi">58</span>     <span class="n">all_data</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">response</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">])</span>
+<span class="g g-Whitespace">     </span><span class="mi">60</span>     <span class="n">params</span><span class="p">[</span><span class="s1">&#39;page&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="ne">---&gt; </span><span class="mi">61</span>     <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">63</span> <span class="k">return</span> <span class="n">all_data</span>
+
+<span class="ne">KeyboardInterrupt</span>: 
 </pre></div>
 </div>
 </div>
