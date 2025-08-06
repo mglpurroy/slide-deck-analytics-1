@@ -75,3 +75,10 @@ exclude_patterns:
   - "**.ipynb_checkpoints"
   - ".nox/*"
   - "README.md"
+# Additional configuration for interactive HTML files
+sphinx:
+  config:
+    html_static_path: ['_static']
+    html_extra_path: ['_sources/notebooks/*.html']
+    html_copy_source: false
+    html_show_sourcelink: false
