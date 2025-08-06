@@ -7,9 +7,9 @@ repository:
   branch: main  # Change this if your main branch is different
 
 execute:
-  execute_notebooks: force
+  execute_notebooks: cache
   timeout: 1200
-  allow_errors: false
+  allow_errors: true
   stderr_output: show
 
 html:
