@@ -3,6 +3,11 @@ _build/
 _static/
 _images/
 _sources/_build/
+_sphinx_design_static/
+*.html
+searchindex.js
+objects.inv
+.buildinfo
 
 # Jupyter Notebook Checkpoints
 .ipynb_checkpoints/
