@@ -10,7 +10,7 @@ import os
 def fix_crime_plot():
     """Fix the crime plot function to work in static Jupyter Book builds"""
     
-    notebook_path = "_sources/notebooks/main.ipynb"
+    notebook_path = "docs/notebooks/main.ipynb"
     
     print("🔧 Fixing crime plot in main notebook...")
     

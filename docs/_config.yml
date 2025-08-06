@@ -7,23 +7,32 @@ repository:
   branch: main  # Change this if your main branch is different
 
 execute:
-  execute_notebooks: "auto" 
-  allow_errors: true  # Prevents build crashes
+  execute_notebooks: force
+  timeout: 1200
+  allow_errors: false
+  stderr_output: show
 
 html:
   use_repository_button: true
   use_edit_page_button: true
   use_issues_button: true
-  remove_code_source: true
-  use_jupyterlab: true  # Enables Jupyter widgets & interactive figures 
-  use_thebe: true
+  baseurl: https://mglpurroy.github.io/slide-deck-analytics-1/
+  extra_navbar: ""
+  extra_footer: ""
 
 sphinx:
-  extra_extensions:
-    - sphinx_copybutton  # Enables copy button
-    - sphinx_design  # Improves figure rendering
-    - sphinx_thebe  # Enables live notebook execution
+  config:
+    html_theme_options:
+      repository_url: https://github.com/mglpurroy/slide-deck-analytics-1
+      use_repository_button: true
+      use_issues_button: true
+      use_edit_page_button: true
+      path_to_docs: docs
+    html_show_sourcelink: false
+    html_static_path: ['_static']
+    html_extra_path: ['notebooks/*.html']
+    html_copy_source: false
 
-launch_buttons:
-  binderhub_url: "https://mybinder.org"
-  thebe: false  # Disable Thebe since it's not working
+  extra_extensions:
+    - sphinx_copybutton
+    - sphinx_design

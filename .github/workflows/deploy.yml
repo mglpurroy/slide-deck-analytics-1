@@ -41,27 +41,27 @@ jobs:
           
       - name: Build Jupyter Book
         run: |
-          jupyter-book build _sources --path-output ./ --builder html
+          jupyter-book build docs --path-output ./ --builder html
         env:
           JUPYTER_EXECUTE_TIMEOUT: 1200
           
       - name: Copy interactive HTML files
         run: |
           # Copy any interactive HTML files generated during notebook execution
-          if [ -f "_sources/notebooks/interactive_fragility_plot.html" ]; then
-            cp "_sources/notebooks/interactive_fragility_plot.html" "_build/html/"
+          if [ -f "docs/notebooks/interactive_fragility_plot.html" ]; then
+            cp "docs/notebooks/interactive_fragility_plot.html" "_build/html/"
             echo "✅ Copied interactive fragility plot"
           fi
-          if [ -f "_sources/notebooks/interactive_crime_plot.html" ]; then
-            cp "_sources/notebooks/interactive_crime_plot.html" "_build/html/"
+          if [ -f "docs/notebooks/interactive_crime_plot.html" ]; then
+            cp "docs/notebooks/interactive_crime_plot.html" "_build/html/"
             echo "✅ Copied interactive crime plot"
           fi
-          if [ -f "_sources/notebooks/interactive_fcs_map.html" ]; then
-            cp "_sources/notebooks/interactive_fcs_map.html" "_build/html/"
+          if [ -f "docs/notebooks/interactive_fcs_map.html" ]; then
+            cp "docs/notebooks/interactive_fcs_map.html" "_build/html/"
             echo "✅ Copied interactive FCS map"
           fi
-          # Also check if files were generated in the build directory
-          find _build/html -name "*.html" -path "*/notebooks/*" -exec echo "📄 Found: {}" \;
+          # List what files were generated
+          find _build/html -name "*.html" -exec echo "📄 Found: {}" \;
           
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
