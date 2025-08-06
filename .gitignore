@@ -4,10 +4,21 @@ _static/
 _images/
 _sources/_build/
 _sphinx_design_static/
-*.html
-searchindex.js
-objects.inv
-.buildinfo
+
+# Build artifacts that should not be in root
+/*.html
+/searchindex.js
+/objects.inv
+/.buildinfo
+/.nojekyll
+/notebooks/
+/_config.yml
+/_toc.yml
+
+# Only allow these in docs/ directory
+!docs/*.html
+!docs/_config.yml
+!docs/_toc.yml
 
 # Jupyter Notebook Checkpoints
 .ipynb_checkpoints/
