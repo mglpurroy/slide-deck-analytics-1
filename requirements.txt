@@ -21,6 +21,11 @@ folium>=0.12.0
 # Web requests and APIs
 requests>=2.28.0
 urllib3>=1.26.0
+certifi>=2022.0.0
+
+# Country data and conversion
+pycountry>=22.3.0
+country-converter>=0.7.0
 
 # File handling and utilities
 pathlib2>=2.3.0
