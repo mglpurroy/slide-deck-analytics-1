@@ -1,7 +1,7 @@
 name: Build and Deploy Jupyter Book
 
 on:
-  # Runs on pushes targeting the default branch
+  # Runs on pushes targeting the main branch (now default)
   push:
     branches: ["main"]
   
