@@ -35,6 +35,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
+      - name: Prepare data files
+        run: |
+          echo "📁 Ensuring data files are accessible to notebook..."
+          echo "Current directory: $(pwd)"
+          echo "📊 Data files in data/:"
+          ls -la data/ | head -5
+          echo "📊 Data files in docs/data/:"
+          ls -la docs/data/ | head -5
+          echo "🔗 Creating symlink for notebook compatibility..."
+          # Remove existing data dir if it's a regular directory
+          if [ -d "data" ] && [ ! -L "data" ]; then
+            rm -rf data
+          fi
+          # Create symlink from root/data to docs/data
+          ln -sf docs/data data
+          echo "✅ Symlink created: data -> docs/data"
+          ls -la data/ | head -5
+          
       - name: Build Jupyter Book
         run: |
           jupyter-book build docs --path-output ./ --builder html
